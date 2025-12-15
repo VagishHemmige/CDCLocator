@@ -13,8 +13,10 @@ URL: https://github.com/VagishHemmige/CDCLocator
 BugReports: https://github.com/VagishHemmige/CDCLocator/issues
 Imports: 
     cli,
+    dplyr,
     httr2,
     purrr,
-    tibble
+    tibble,
+    tidyr
 Suggests: 
     usethis

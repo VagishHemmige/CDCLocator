@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------
-# Internal request helper for CDC Locator API
+# Internal request helpers for CDC Locator API
 # -------------------------------------------------------------------------
 
 #' Build an httr2 request for the CDC Locator API
@@ -45,4 +45,12 @@
 #' @param req An httr2 request object.
 #'
 #' @return Parsed JSON content (simplified).
-#' @keywords
+#' @keywords internal
+.perform_cdc_locator_request <- function(req) {
+
+  resp <- httr2::req_perform(req)
+
+  httr2::resp_check_status(resp)
+
+  httr2::resp_body_json(resp, simplifyVector = TRUE)
+}
