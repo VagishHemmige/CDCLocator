@@ -7,6 +7,10 @@
 # so use it only on PRs you trust.
 # GitHub runs comment-triggered workflows from the default branch, so this
 # works only after it is merged to master.
+# The commit it pushes uses GITHUB_TOKEN, which does not start other
+# workflows. Re-run the PR's checks afterwards: open the PR's Checks tab and
+# choose "Approve workflows to run" if shown, or run R-CMD-check.yaml and
+# document-check.yaml from the Actions tab on the PR branch.
 on:
   issue_comment:
     types: [created]
