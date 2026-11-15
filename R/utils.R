@@ -6,7 +6,7 @@
 #'
 #' Returns the left-hand side if it is not NULL, otherwise the right-hand side.
 #'
-#' @keywords internal
+#' @noRd
 `%||%` <- function(x, y) {
   if (!is.null(x)) x else y
 }

@@ -25,7 +25,7 @@
 #' - mentalhealth     : Mental health services
 #' - housing          : Housing assistance
 #'
-#' @keywords internal
+#' @noRd
 .cdc_locator_services <- c(
   "hivtesting",
   "stdtesting",
@@ -48,7 +48,7 @@
 #' @param services Character vector of service enums.
 #'
 #' @return Invisibly returns TRUE if valid.
-#' @keywords internal
+#' @noRd
 .validate_cdc_locator_services <- function(services) {
 
   if (is.null(services)) {

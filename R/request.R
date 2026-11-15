@@ -12,7 +12,7 @@
 #' @param client_token Optional CDC client token override.
 #'
 #' @return An httr2 request object.
-#' @keywords internal
+#' @noRd
 .cdc_locator_request <- function(endpoint,
                                  query = list(),
                                  client_id = NULL,
@@ -45,7 +45,7 @@
 #' @param req An httr2 request object.
 #'
 #' @return Parsed JSON content (simplified).
-#' @keywords internal
+#' @noRd
 .perform_cdc_locator_request <- function(req) {
 
   resp <- httr2::req_perform(req)
