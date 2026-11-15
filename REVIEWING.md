@@ -61,21 +61,21 @@ access is not required. Disclose unavailable sources and the resulting
 evidence gap rather than inventing verification.
 
 Check, where affected: - Every request goes through
-[`.cdc_locator_request()`](reference/dot-cdc_locator_request.md) and
-`.perform_cdc_locator_request()`, not a separate httr2 chain. - Input
-validation: invalid, empty or `NA` ZIP codes, cities, states,
-coordinates, radius and service values, and ZIP codes as character with
-leading zeros kept. - Responses: no providers found, empty or missing
-fields, `NULL` versus `NA`, nested columns that are absent, and changed
-response shapes. A function should return a zero-row tibble with the
-documented columns, or a clear error, never a silently malformed
-result. - Failures: HTTP errors, timeouts and network failures, with
-retries and rate limiting where they help. Error messages should let the
-user tell apart missing credentials, a rejected token, bad input and the
-API being down. - Credentials: never shown in errors, messages, printed
-requests, `req_dry_run()` or verbose output, and never stored in
-fixtures or snapshots. - Caching, if added: where it writes, how long
-entries live, and whether cached results can mix credentials or users.
+`.cdc_locator_request()` and `.perform_cdc_locator_request()`, not a
+separate httr2 chain. - Input validation: invalid, empty or `NA` ZIP
+codes, cities, states, coordinates, radius and service values, and ZIP
+codes as character with leading zeros kept. - Responses: no providers
+found, empty or missing fields, `NULL` versus `NA`, nested columns that
+are absent, and changed response shapes. A function should return a
+zero-row tibble with the documented columns, or a clear error, never a
+silently malformed result. - Failures: HTTP errors, timeouts and network
+failures, with retries and rate limiting where they help. Error messages
+should let the user tell apart missing credentials, a rejected token,
+bad input and the API being down. - Credentials: never shown in errors,
+messages, printed requests, `req_dry_run()` or verbose output, and never
+stored in fixtures or snapshots. - Caching, if added: where it writes,
+how long entries live, and whether cached results can mix credentials or
+users.
 
 HTTP success alone proves none of the above.
 

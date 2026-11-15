@@ -16,6 +16,7 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+<li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/VagishHemmige/CDCLocator/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
@@ -49,7 +50,7 @@
 <div class="section level2">
 <h2 id="api-checks">API checks<a class="anchor" aria-label="anchor" href="#api-checks"></a></h2>
 <p>Verify affected behavior against the current HIV.gov Locator API documentation where it is available, starting from <a href="https://www.hiv.gov/blog/announcing-the-locator-api" class="external-link">HIV.gov’s Locator API announcement</a>. Use an available authorized browser or web-fetch tool; shell network access is not required. Disclose unavailable sources and the resulting evidence gap rather than inventing verification.</p>
-<p>Check, where affected: - Every request goes through <code><a href="reference/dot-cdc_locator_request.html">.cdc_locator_request()</a></code> and <code>.perform_cdc_locator_request()</code>, not a separate httr2 chain. - Input validation: invalid, empty or <code>NA</code> ZIP codes, cities, states, coordinates, radius and service values, and ZIP codes as character with leading zeros kept. - Responses: no providers found, empty or missing fields, <code>NULL</code> versus <code>NA</code>, nested columns that are absent, and changed response shapes. A function should return a zero-row tibble with the documented columns, or a clear error, never a silently malformed result. - Failures: HTTP errors, timeouts and network failures, with retries and rate limiting where they help. Error messages should let the user tell apart missing credentials, a rejected token, bad input and the API being down. - Credentials: never shown in errors, messages, printed requests, <code>req_dry_run()</code> or verbose output, and never stored in fixtures or snapshots. - Caching, if added: where it writes, how long entries live, and whether cached results can mix credentials or users.</p>
+<p>Check, where affected: - Every request goes through <code>.cdc_locator_request()</code> and <code>.perform_cdc_locator_request()</code>, not a separate httr2 chain. - Input validation: invalid, empty or <code>NA</code> ZIP codes, cities, states, coordinates, radius and service values, and ZIP codes as character with leading zeros kept. - Responses: no providers found, empty or missing fields, <code>NULL</code> versus <code>NA</code>, nested columns that are absent, and changed response shapes. A function should return a zero-row tibble with the documented columns, or a clear error, never a silently malformed result. - Failures: HTTP errors, timeouts and network failures, with retries and rate limiting where they help. Error messages should let the user tell apart missing credentials, a rejected token, bad input and the API being down. - Credentials: never shown in errors, messages, printed requests, <code>req_dry_run()</code> or verbose output, and never stored in fixtures or snapshots. - Caching, if added: where it writes, how long entries live, and whether cached results can mix credentials or users.</p>
 <p>HTTP success alone proves none of the above.</p>
 </div>
 <div class="section level2">
@@ -73,7 +74,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by First Last.</p>
+  <p>Developed by Vagish Hemmige.</p>
 </div>
 
 <div class="pkgdown-footer-right">

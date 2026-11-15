@@ -10,3 +10,5 @@
   Set CDC Locator API credentials
 - [`cdc_providers()`](cdc_providers.md) : Find CDC HIV-related service
   providers by ZIP code
+- [`cdc_providers_tidy()`](cdc_providers_tidy.md) : Tidy CDC Locator
+  provider output

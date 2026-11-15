@@ -16,6 +16,7 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+<li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/VagishHemmige/CDCLocator/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
@@ -44,13 +45,13 @@
 <h2 id="architecture">Architecture<a class="anchor" aria-label="anchor" href="#architecture"></a></h2>
 <p>CDCLocator is a development-stage R client for the HIV.gov Locator API (<code>https://locator-api.hiv.gov</code>). It finds HIV and related service providers near a ZIP code, city and state, or point, and returns tibbles.</p>
 <ul><li>
-<code>R/request.R</code>: <code><a href="reference/dot-cdc_locator_request.html">.cdc_locator_request()</a></code> builds every request (base URL, auth headers, query, timeout) and <code>.perform_cdc_locator_request()</code> performs it, checks the status and parses JSON. All API calls go through these two helpers.</li>
+<code>R/request.R</code>: <code>.cdc_locator_request()</code> builds every request (base URL, auth headers, query, timeout) and <code>.perform_cdc_locator_request()</code> performs it, checks the status and parses JSON. All API calls go through these two helpers.</li>
 <li>
-<code>R/auth.R</code>: <code><a href="reference/dot-build_auth_headers.html">.build_auth_headers()</a></code> finds credentials (arguments first, then the <code>CDC_LOCATOR_CLIENT_ID</code> and <code>CDC_LOCATOR_CLIENT_TOKEN</code> environment variables); <code><a href="reference/cdc_locator_set_credentials.html">cdc_locator_set_credentials()</a></code> helps the user add them to <code>.Renviron</code>.</li>
+<code>R/auth.R</code>: <code>.build_auth_headers()</code> finds credentials (arguments first, then the <code>CDC_LOCATOR_CLIENT_ID</code> and <code>CDC_LOCATOR_CLIENT_TOKEN</code> environment variables); <code><a href="reference/cdc_locator_set_credentials.html">cdc_locator_set_credentials()</a></code> helps the user add them to <code>.Renviron</code>.</li>
 <li>
 <code>R/providers.R</code>: <code><a href="reference/cdc_providers.html">cdc_providers()</a></code>, providers within a radius of a ZIP code.</li>
 <li>
-<code>R/providers_tidy.R</code>: <code>cdc_providers_tidy()</code>, flattens the nested provider columns returned by <code><a href="reference/cdc_providers.html">cdc_providers()</a></code>.</li>
+<code>R/providers_tidy.R</code>: <code><a href="reference/cdc_providers_tidy.html">cdc_providers_tidy()</a></code>, flattens the nested provider columns returned by <code><a href="reference/cdc_providers.html">cdc_providers()</a></code>.</li>
 <li>
 <code>R/address_place.R</code>, <code>R/address_point.R</code>: <code><a href="reference/cdc_address_place.html">cdc_address_place()</a></code> and <code><a href="reference/cdc_address_point.html">cdc_address_point()</a></code>, translate a city and state or a latitude and longitude into a ZIP code.</li>
 <li>
@@ -106,7 +107,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by First Last.</p>
+  <p>Developed by Vagish Hemmige.</p>
 </div>
 
 <div class="pkgdown-footer-right">

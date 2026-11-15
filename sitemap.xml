@@ -6,16 +6,12 @@
 <url><loc>/REVIEWING.html</loc></url>
 <url><loc>/authors.html</loc></url>
 <url><loc>/index.html</loc></url>
+<url><loc>/news/index.html</loc></url>
 <url><loc>/reference/cdc_address_place.html</loc></url>
 <url><loc>/reference/cdc_address_point.html</loc></url>
 <url><loc>/reference/cdc_locator_set_credentials.html</loc></url>
 <url><loc>/reference/cdc_providers.html</loc></url>
-<url><loc>/reference/dot-build_auth_headers.html</loc></url>
-<url><loc>/reference/dot-cdc_locator_request.html</loc></url>
-<url><loc>/reference/dot-cdc_locator_services.html</loc></url>
-<url><loc>/reference/dot-has_cdc_locator_credentials.html</loc></url>
-<url><loc>/reference/dot-validate_cdc_locator_services.html</loc></url>
-<url><loc>/reference/grapes-or-or-grapes.html</loc></url>
+<url><loc>/reference/cdc_providers_tidy.html</loc></url>
 <url><loc>/reference/index.html</loc></url>
 </urlset>
 

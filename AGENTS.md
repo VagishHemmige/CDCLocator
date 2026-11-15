@@ -31,21 +31,20 @@ CDCLocator is a development-stage R client for the HIV.gov Locator API
 providers near a ZIP code, city and state, or point, and returns
 tibbles.
 
-- `R/request.R`:
-  [`.cdc_locator_request()`](reference/dot-cdc_locator_request.md)
-  builds every request (base URL, auth headers, query, timeout) and
+- `R/request.R`: `.cdc_locator_request()` builds every request (base
+  URL, auth headers, query, timeout) and
   `.perform_cdc_locator_request()` performs it, checks the status and
   parses JSON. All API calls go through these two helpers.
-- `R/auth.R`:
-  [`.build_auth_headers()`](reference/dot-build_auth_headers.md) finds
-  credentials (arguments first, then the `CDC_LOCATOR_CLIENT_ID` and
-  `CDC_LOCATOR_CLIENT_TOKEN` environment variables);
+- `R/auth.R`: `.build_auth_headers()` finds credentials (arguments
+  first, then the `CDC_LOCATOR_CLIENT_ID` and `CDC_LOCATOR_CLIENT_TOKEN`
+  environment variables);
   [`cdc_locator_set_credentials()`](reference/cdc_locator_set_credentials.md)
   helps the user add them to `.Renviron`.
 - `R/providers.R`: [`cdc_providers()`](reference/cdc_providers.md),
   providers within a radius of a ZIP code.
-- `R/providers_tidy.R`: `cdc_providers_tidy()`, flattens the nested
-  provider columns returned by
+- `R/providers_tidy.R`:
+  [`cdc_providers_tidy()`](reference/cdc_providers_tidy.md), flattens
+  the nested provider columns returned by
   [`cdc_providers()`](reference/cdc_providers.md).
 - `R/address_place.R`, `R/address_point.R`:
   [`cdc_address_place()`](reference/cdc_address_place.md) and
