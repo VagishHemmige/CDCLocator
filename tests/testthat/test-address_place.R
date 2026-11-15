@@ -14,7 +14,9 @@ test_that("cdc_address_place() sends city and state and returns one row", {
   )))
   out <- cdc_address_place("Boston", "MA")
 
-  query <- httr2::url_parse(mock$req$url)$query
+  url <- httr2::url_parse(mock$req$url)
+  expect_equal(url$path, "/address/place")
+  query <- url$query
   expect_equal(query, list(city = "Boston", state = "MA"))
   expect_equal(
     out,
