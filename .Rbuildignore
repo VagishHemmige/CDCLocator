@@ -1,5 +1,7 @@
 ^CDCLocator\.Rproj$
 ^\.Rproj\.user$
+^\.github$
+^air\.toml$
 ^README\.Rmd$
 ^LICENSE\.md$
 ^_pkgdown\.yml$
