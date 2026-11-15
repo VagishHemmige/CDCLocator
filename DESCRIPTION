@@ -12,6 +12,8 @@ Description: Queries the 'HIV.gov' Locator application programming interface
     a client ID and token, which are read from function arguments or
     environment variables. Not affiliated with or endorsed by 'HIV.gov'.
 License: MIT + file LICENSE
+Depends: 
+    R (>= 4.1.0)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3

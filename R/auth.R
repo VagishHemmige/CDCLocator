@@ -14,7 +14,7 @@
 #' @param client_token CDC client token (optional)
 #'
 #' @return Named character vector suitable for httr2::req_headers()
-#' @keywords internal
+#' @noRd
 .build_auth_headers <- function(client_id = NULL, client_token = NULL) {
 
   client_id    <- client_id    %||% Sys.getenv("CDC_LOCATOR_CLIENT_ID")
@@ -39,7 +39,7 @@
 #' Check whether CDC Locator credentials are available
 #'
 #' @return Logical scalar
-#' @keywords internal
+#' @noRd
 .has_cdc_locator_credentials <- function() {
   nzchar(Sys.getenv("CDC_LOCATOR_CLIENT_ID")) &&
     nzchar(Sys.getenv("CDC_LOCATOR_CLIENT_TOKEN"))
