@@ -1,0 +1,45 @@
+# Sets obviously fake credentials for the calling test. Never use real ones.
+local_fake_credentials <- function(env = parent.frame()) {
+  withr::local_envvar(
+    CDC_LOCATOR_CLIENT_ID = "fake-client-id",
+    CDC_LOCATOR_CLIENT_TOKEN = "fake-client-token",
+    .local_envir = env
+  )
+}
+
+# Builds a JSON response like the Locator API's, for httr2 mocking.
+json_response <- function(body, status = 200L) {
+  httr2::response(
+    status_code = status,
+    headers = list(`Content-Type` = "application/json"),
+    body = charToRaw(jsonlite::toJSON(body, auto_unbox = TRUE, null = "null"))
+  )
+}
+
+# Mocks every request in the calling test with `response` and returns an
+# environment whose `req` holds the last request made.
+local_mock_locator <- function(response, env = parent.frame()) {
+  seen <- new.env()
+  httr2::local_mocked_responses(
+    function(req) {
+      seen$req <- req
+      response
+    },
+    env = env
+  )
+  seen
+}
+
+# Skips unless live tests were asked for and credentials are present.
+skip_if_not_live <- function() {
+  skip_on_cran()
+  skip_if_not(
+    identical(Sys.getenv("CDC_LOCATOR_LIVE_TESTS"), "true"),
+    "Set CDC_LOCATOR_LIVE_TESTS=true to run live API tests."
+  )
+  skip_if_not(
+    nzchar(Sys.getenv("CDC_LOCATOR_CLIENT_ID")) &&
+      nzchar(Sys.getenv("CDC_LOCATOR_CLIENT_TOKEN")),
+    "Live API tests need CDC_LOCATOR_CLIENT_ID and CDC_LOCATOR_CLIENT_TOKEN."
+  )
+}
