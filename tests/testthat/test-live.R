@@ -22,6 +22,10 @@ test_that("cdc_address_place() and cdc_address_point() return a ZIP code", {
   place <- cdc_address_place("New York", "NY")
   point <- cdc_address_point(40.7506, -73.9972)
 
-  expect_type(place$zipcode, "character")
-  expect_type(point$zipcode, "character")
+  for (out in list(place, point)) {
+    expect_equal(nrow(out), 1)
+    expect_type(out$zipcode, "character")
+    expect_false(is.na(out$zipcode))
+    expect_match(out$zipcode, "^[0-9]{5}$")
+  }
 })

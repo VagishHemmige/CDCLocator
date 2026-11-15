@@ -14,7 +14,9 @@ test_that("cdc_address_point() sends coordinates and returns one row", {
   )))
   out <- cdc_address_point(42.35, -71.05)
 
-  query <- httr2::url_parse(mock$req$url)$query
+  url <- httr2::url_parse(mock$req$url)
+  expect_equal(url$path, "/address/point")
+  query <- url$query
   expect_equal(query, list(latitude = "42.35", longitude = "-71.05"))
   expect_equal(out$zipcode, "02110")
 })
