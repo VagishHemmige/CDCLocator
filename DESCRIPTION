@@ -1,10 +1,16 @@
 Package: CDCLocator
-Title: What the Package Does (One Line, Title Case)
+Title: Find HIV Service Providers with the 'HIV.gov' Locator API
 Version: 0.0.0.9000
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
+    person("Vagish", "Hemmige", , "vagish.hemmige@gmail.com", role = c("aut", "cre", "cph"),
+           comment = c(ORCID = "0009-0006-6346-1826"))
+Description: Queries the 'HIV.gov' Locator application programming interface
+    (API) for HIV testing, prevention, care and related service providers near
+    a ZIP code, and translates a city and state or a latitude and longitude
+    into a ZIP code. Results are returned as tibbles, with a helper that
+    flattens nested provider details into one row per provider. The API needs
+    a client ID and token, which are read from function arguments or
+    environment variables. Not affiliated with or endorsed by 'HIV.gov'.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
