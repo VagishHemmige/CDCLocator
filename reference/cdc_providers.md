@@ -1,0 +1,42 @@
+# Find CDC HIV-related service providers by ZIP code
+
+Queries the CDC Locator API to return service providers within a given
+radius of a ZIP code.
+
+## Usage
+
+``` r
+cdc_providers(
+  zipcode,
+  radius = 10,
+  services = NULL,
+  client_id = NULL,
+  client_token = NULL
+)
+```
+
+## Arguments
+
+- zipcode:
+
+  Character scalar. ZIP code.
+
+- radius:
+
+  Integer search radius in miles (1–50, default: 10).
+
+- services:
+
+  Optional character vector of service enums.
+
+- client_id:
+
+  Optional CDC client ID override.
+
+- client_token:
+
+  Optional CDC client token override.
+
+## Value
+
+A tibble of service providers.
