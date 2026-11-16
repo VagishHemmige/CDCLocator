@@ -16,6 +16,15 @@ json_response <- function(body, status = 200L) {
   )
 }
 
+# Builds a response from literal JSON text, for shapes toJSON() can't produce.
+raw_json_response <- function(text, status = 200L) {
+  httr2::response(
+    status_code = status,
+    headers = list(`Content-Type` = "application/json"),
+    body = charToRaw(text)
+  )
+}
+
 # Mocks every request in the calling test with `response` and returns an
 # environment whose `req` holds the last request made.
 local_mock_locator <- function(response, env = parent.frame()) {
@@ -41,5 +50,32 @@ skip_if_not_live <- function() {
     nzchar(Sys.getenv("CDC_LOCATOR_CLIENT_ID")) &&
       nzchar(Sys.getenv("CDC_LOCATOR_CLIENT_TOKEN")),
     "Live API tests need CDC_LOCATOR_CLIENT_ID and CDC_LOCATOR_CLIENT_TOKEN."
+  )
+}
+
+# One provider in the shape the API returned on 2026-11-16 (values invented).
+fake_provider <- function(
+  id = "a1",
+  languages = list("English"),
+  website = "https://example.org"
+) {
+  list(
+    type = "provider",
+    id = id,
+    attributes = list(
+      name = paste("Clinic", id),
+      address = list(
+        city = "Leesburg",
+        country = "US",
+        state = "VA",
+        street = "1 Main St",
+        zipcode = "20176"
+      ),
+      categories = NULL,
+      contact = list(others = NULL, telephone = "555-0100", website = website),
+      languages = languages,
+      point = list(latitude = 39.1, longitude = -77.5),
+      distance = 1.2
+    )
   )
 }

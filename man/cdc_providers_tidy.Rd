@@ -10,7 +10,12 @@ cdc_providers_tidy(providers)
 \item{providers}{Output from cdc_providers()}
 }
 \value{
-A tidy tibble with one row per provider
+A tibble with one row per provider and columns \code{provider_type},
+\code{provider_id}, \code{name}, \code{city}, \code{country}, \code{state}, \code{street}, \code{zipcode},
+\code{categories}, \code{contact_others}, \code{contact_telephone}, \code{contact_website},
+\code{languages} (a list of character vectors), \code{latitude}, \code{longitude} and
+\code{distance} (miles from the searched ZIP code). When no providers matched,
+the tibble has these columns and zero rows.
 }
 \description{
 Flattens nested provider attributes into an analysis-ready tibble.

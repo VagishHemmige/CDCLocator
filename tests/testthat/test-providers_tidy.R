@@ -1,34 +1,48 @@
-# The nested shape below is inferred from cdc_providers_tidy() itself, not
-# from a recorded API response.
-nested_providers <- function() {
-  tibble::tibble(
-    id = "a1",
-    type = "provider",
-    attributes = list(list(
-      name = "Example Clinic",
-      address = list(
-        street = "1 Main St",
-        city = "Boston",
-        state = "MA",
-        zipcode = "02110"
-      ),
-      contact = list(phone = "555-0100"),
-      point = list(latitude = 42.35, longitude = -71.05)
-    ))
-  )
-}
+tidy_columns <- c(
+  "provider_type",
+  "provider_id",
+  "name",
+  "street",
+  "city",
+  "state",
+  "zipcode",
+  "country",
+  "categories",
+  "contact_others",
+  "contact_telephone",
+  "contact_website",
+  "languages",
+  "latitude",
+  "longitude",
+  "distance"
+)
 
-test_that("cdc_providers_tidy() flattens and renames provider columns", {
-  out <- cdc_providers_tidy(nested_providers())
+test_that("cdc_providers_tidy() flattens the API's provider shape", {
+  local_fake_credentials()
+  local_mock_locator(json_response(list(
+    fake_provider("a1", languages = list("English")),
+    fake_provider("b2", languages = list("English", "Spanish"))
+  )))
+  out <- cdc_providers_tidy(cdc_providers("20176"))
 
-  expect_equal(out$provider_id, "a1")
-  expect_equal(out$provider_type, "provider")
-  expect_equal(out$name, "Example Clinic")
-  expect_equal(out$street, "1 Main St")
-  expect_equal(out$zipcode, "02110")
-  expect_equal(out$contact_phone, "555-0100")
-  expect_equal(out$latitude, 42.35)
-  expect_equal(out$longitude, -71.05)
+  expect_named(out, tidy_columns, ignore.order = TRUE)
+  expect_equal(out$provider_id, c("a1", "b2"))
+  expect_equal(out$name, c("Clinic a1", "Clinic b2"))
+  expect_equal(out$zipcode, c("20176", "20176"))
+  expect_equal(out$country, c("US", "US"))
+  expect_equal(out$contact_telephone, c("555-0100", "555-0100"))
+  expect_equal(out$latitude, c(39.1, 39.1))
+  expect_equal(out$distance, c(1.2, 1.2))
+  expect_equal(out$languages, list("English", c("English", "Spanish")))
+})
+
+test_that("cdc_providers_tidy() returns zero rows when no providers match", {
+  local_fake_credentials()
+  local_mock_locator(json_response(list()))
+  out <- cdc_providers_tidy(cdc_providers("20176"))
+
+  expect_equal(nrow(out), 0)
+  expect_named(out, tidy_columns, ignore.order = TRUE)
 })
 
 test_that("cdc_providers_tidy() rejects input that is not a tibble", {

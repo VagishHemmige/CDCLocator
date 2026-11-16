@@ -64,5 +64,26 @@ cdc_providers <- function(
   body <- .perform_cdc_locator_request(req)
 
   # ---- normalize response -------------------------------------------------
+  # No matching providers comes back as an empty JSON array, which parses to
+  # an unnamed empty list. Providers parse to a data frame. Anything else
+  # (null, an object) is not a provider list and must not look like "none".
+  if (is.list(body) && length(body) == 0 && is.null(names(body))) {
+    return(tibble::tibble(
+      type = character(),
+      id = character(),
+      attributes = list()
+    ))
+  }
+
+  if (!is.data.frame(body)) {
+    cli::cli_abort(
+      c(
+        "The CDC Locator API returned an unexpected response.",
+        "i" = "Expected a JSON array of providers."
+      ),
+      class = "cdclocator_unexpected_response"
+    )
+  }
+
   tibble::as_tibble(body)
 }

@@ -69,3 +69,29 @@ test_that("cdc_providers() returns a tibble", {
   expect_s3_class(out, "tbl_df")
   expect_equal(out$id, c("a1", "b2"))
 })
+
+test_that("cdc_providers() returns zero rows when no providers match", {
+  local_fake_credentials()
+  local_mock_locator(json_response(list()))
+  out <- cdc_providers("20176")
+
+  expect_s3_class(out, "tbl_df")
+  expect_equal(nrow(out), 0)
+  expect_named(out, c("type", "id", "attributes"))
+})
+
+test_that("cdc_providers() treats only an empty array as no matches", {
+  local_fake_credentials()
+
+  local_mock_locator(raw_json_response("[]"))
+  expect_equal(nrow(cdc_providers("20176")), 0)
+
+  local_mock_locator(raw_json_response("null"))
+  expect_snapshot(cdc_providers("20176"), error = TRUE)
+
+  local_mock_locator(raw_json_response("{}"))
+  expect_snapshot(cdc_providers("20176"), error = TRUE)
+
+  local_mock_locator(raw_json_response('{"Message": "unexpected"}'))
+  expect_snapshot(cdc_providers("20176"), error = TRUE)
+})
