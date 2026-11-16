@@ -52,7 +52,12 @@
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A tidy tibble with one row per provider</p>
+    <p>A tibble with one row per provider and columns <code>provider_type</code>,
+<code>provider_id</code>, <code>name</code>, <code>city</code>, <code>country</code>, <code>state</code>, <code>street</code>, <code>zipcode</code>,
+<code>categories</code>, <code>contact_others</code>, <code>contact_telephone</code>, <code>contact_website</code>,
+<code>languages</code> (a list of character vectors), <code>latitude</code>, <code>longitude</code> and
+<code>distance</code> (miles from the searched ZIP code). When no providers matched,
+the tibble has these columns and zero rows.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
