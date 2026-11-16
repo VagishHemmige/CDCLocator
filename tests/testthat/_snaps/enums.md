@@ -15,5 +15,5 @@
       ! Invalid CDC Locator service enum(s):
       x nope
       i Valid values are:
-        hivtesting, stdtesting, selftesting, preptesting, pep, condom, Hepc, doxypep, mailintesting, ryanwhite, clinics, substanceabuse, mentalhealth, housing
+        hivtesting, stdtesting, selftesting, preptesting, pep, condom, hepc, doxypep, mailintesting, ryanwhite, clinics, substanceabuse, mentalhealth, housing
 

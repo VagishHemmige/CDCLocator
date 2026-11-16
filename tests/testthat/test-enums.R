@@ -1,6 +1,12 @@
-test_that(".validate_cdc_locator_services() accepts NULL and valid values", {
-  expect_true(.validate_cdc_locator_services(NULL))
-  expect_true(.validate_cdc_locator_services(c("hivtesting", "pep")))
+test_that(".validate_cdc_locator_services() returns every service for NULL", {
+  expect_equal(.validate_cdc_locator_services(NULL), .cdc_locator_services)
+})
+
+test_that(".validate_cdc_locator_services() returns valid values in lowercase", {
+  expect_equal(
+    .validate_cdc_locator_services(c("hivtesting", "Hepc", "PEP")),
+    c("hivtesting", "hepc", "pep")
+  )
 })
 
 test_that(".validate_cdc_locator_services() rejects bad input", {

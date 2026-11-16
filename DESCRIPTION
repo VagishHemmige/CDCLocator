@@ -23,7 +23,6 @@ Imports:
     cli,
     dplyr,
     httr2 (>= 1.0.0),
-    purrr,
     tibble,
     tidyr
 Suggests: 
