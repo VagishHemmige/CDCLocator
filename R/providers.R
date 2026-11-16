@@ -64,5 +64,14 @@ cdc_providers <- function(
   body <- .perform_cdc_locator_request(req)
 
   # ---- normalize response -------------------------------------------------
+  # No matching providers comes back as an empty JSON array.
+  if (length(body) == 0) {
+    return(tibble::tibble(
+      type = character(),
+      id = character(),
+      attributes = list()
+    ))
+  }
+
   tibble::as_tibble(body)
 }

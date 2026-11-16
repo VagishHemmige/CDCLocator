@@ -43,3 +43,30 @@ skip_if_not_live <- function() {
     "Live API tests need CDC_LOCATOR_CLIENT_ID and CDC_LOCATOR_CLIENT_TOKEN."
   )
 }
+
+# One provider in the shape the API returned on 2026-11-16 (values invented).
+fake_provider <- function(
+  id = "a1",
+  languages = list("English"),
+  website = "https://example.org"
+) {
+  list(
+    type = "provider",
+    id = id,
+    attributes = list(
+      name = paste("Clinic", id),
+      address = list(
+        city = "Leesburg",
+        country = "US",
+        state = "VA",
+        street = "1 Main St",
+        zipcode = "20176"
+      ),
+      categories = NULL,
+      contact = list(others = NULL, telephone = "555-0100", website = website),
+      languages = languages,
+      point = list(latitude = 39.1, longitude = -77.5),
+      distance = 1.2
+    )
+  )
+}
