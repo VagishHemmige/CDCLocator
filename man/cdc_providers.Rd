@@ -17,7 +17,12 @@ cdc_providers(
 
 \item{radius}{Integer search radius in miles (1–50, default: 10).}
 
-\item{services}{Optional character vector of service enums.}
+\item{services}{Character vector of services to search for, matched in
+any case: \code{"hivtesting"}, \code{"stdtesting"}, \code{"selftesting"},
+\code{"preptesting"}, \code{"pep"}, \code{"condom"}, \code{"hepc"}, \code{"doxypep"},
+\code{"mailintesting"}, \code{"ryanwhite"}, \code{"clinics"}, \code{"substanceabuse"},
+\code{"mentalhealth"} or \code{"housing"}. \code{NULL}, the default, searches for all
+of them.}
 
 \item{client_id}{Optional CDC client ID override.}
 
