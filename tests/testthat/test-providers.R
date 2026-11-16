@@ -18,14 +18,44 @@ test_that("cdc_providers() sends zipcode, radius and services", {
   expect_equal(query$services, "hivtesting,pep")
 })
 
-test_that("cdc_providers() leaves services out when it is NULL", {
+test_that("cdc_providers() sends every service when services is NULL", {
+  # The API now requires both radius and services (observed 2026-11-16).
   local_fake_credentials()
   mock <- local_mock_locator(json_response(list()))
   cdc_providers("02110")
 
   query <- httr2::url_parse(mock$req$url)$query
-  expect_named(query, c("zipcode", "radius"))
+  expect_named(query, c("zipcode", "radius", "services"))
   expect_equal(query$radius, "10")
+  expect_equal(
+    strsplit(query$services, ",")[[1]],
+    c(
+      "hivtesting",
+      "stdtesting",
+      "selftesting",
+      "preptesting",
+      "pep",
+      "condom",
+      "hepc",
+      "doxypep",
+      "mailintesting",
+      "ryanwhite",
+      "clinics",
+      "substanceabuse",
+      "mentalhealth",
+      "housing"
+    )
+  )
+})
+
+test_that("cdc_providers() matches services in any case and sends lowercase", {
+  # The API returns nothing for `Hepc` and matches `hepc` (observed 2026-11-16).
+  local_fake_credentials()
+  mock <- local_mock_locator(json_response(list()))
+  cdc_providers("02110", services = c("Hepc", "HIVtesting"))
+
+  query <- httr2::url_parse(mock$req$url)$query
+  expect_equal(query$services, "hepc,hivtesting")
 })
 
 test_that("cdc_providers() returns a tibble", {

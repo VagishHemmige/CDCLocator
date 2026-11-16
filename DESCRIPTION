@@ -16,14 +16,12 @@ Depends:
     R (>= 4.1.0)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.3
 URL: https://github.com/VagishHemmige/CDCLocator
 BugReports: https://github.com/VagishHemmige/CDCLocator/issues
 Imports: 
     cli,
     dplyr,
     httr2 (>= 1.0.0),
-    purrr,
     tibble,
     tidyr
 Suggests: 
@@ -32,3 +30,4 @@ Suggests:
     usethis,
     withr
 Config/testthat/edition: 3
+Config/roxygen2/version: 8.1.1
