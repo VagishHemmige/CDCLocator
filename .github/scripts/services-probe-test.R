@@ -25,7 +25,7 @@ offers <- list(
   p2 = c("hivtesting", "ryanwhite"),
   p3 = c("clinics"),
   p4 = c("housing"),
-  p5 = c("SENTINELID123")
+  SENTINELID123 = "clinics"
 )
 
 local_mocked_responses(function(req) {
