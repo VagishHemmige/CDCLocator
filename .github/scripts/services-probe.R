@@ -28,7 +28,9 @@ services <- c(
   "housing"
 )
 
-count_providers <- function(zipcode, radius, svc) {
+# Returns the provider IDs from one request, or a fixed label explaining why
+# there are none. IDs stay in memory; only counts and comparisons are printed.
+fetch_ids <- function(zipcode, radius, svc) {
   Sys.sleep(1)
   resp <- tryCatch(
     request("https://locator-api.hiv.gov") |>
@@ -49,76 +51,142 @@ count_providers <- function(zipcode, radius, svc) {
     error = \(e) NULL
   )
   if (is.null(resp)) {
-    return(c(status = "request failed", providers = ""))
+    return(list(status = "request failed", ids = NULL))
   }
-  n <- if (resp_status(resp) == 200) {
-    body <- tryCatch(resp_body_json(resp), error = \(e) NULL)
-    if (is.list(body)) as.character(length(body)) else "not a JSON array"
-  } else {
-    ""
+  status <- as.character(resp_status(resp))
+  if (status != "200") {
+    return(list(status = status, ids = NULL))
   }
-  c(status = as.character(resp_status(resp)), providers = n)
+  body <- tryCatch(resp_body_json(resp), error = \(e) NULL)
+  if (is.null(body) && !identical(trimws(resp_body_string(resp)), "null")) {
+    return(list(status = status, ids = "malformed JSON"))
+  }
+  list(status = status, ids = provider_ids(body))
 }
 
-cases <- c(
-  lapply(services, \(s) list(label = s, zip = "20176", radius = 10, svc = s)),
-  list(
-    list(
-      label = "hivtesting,ryanwhite,clinics (probe example)",
-      zip = "20176",
-      radius = 10,
-      svc = c("hivtesting", "ryanwhite", "clinics")
-    ),
-    list(
-      label = "hivtesting,stdtesting",
-      zip = "20176",
-      radius = 10,
-      svc = c("hivtesting", "stdtesting")
-    ),
-    list(
-      label = "hivtesting,housing",
-      zip = "20176",
-      radius = 10,
-      svc = c("hivtesting", "housing")
-    ),
-    list(label = "all 14", zip = "20176", radius = 10, svc = services),
-    list(
-      label = "hivtesting, ZIP 10001, radius 1",
-      zip = "10001",
-      radius = 1,
-      svc = "hivtesting"
-    ),
-    list(
-      label = "all 14, ZIP 10001, radius 1",
-      zip = "10001",
-      radius = 1,
-      svc = services
-    )
+# A provider array is an unnamed list of objects that each have an `id`.
+# Anything else gets a fixed label instead of a count.
+provider_ids <- function(body) {
+  if (!is.list(body) || !is.null(names(body))) {
+    return("unexpected shape")
+  }
+  ok <- vapply(
+    body,
+    \(x) is.list(x) && !is.null(names(x)) && length(x$id) == 1,
+    logical(1)
   )
-)
+  if (!all(ok)) {
+    return("unexpected shape")
+  }
+  vapply(body, \(x) as.character(x$id), character(1))
+}
 
-rows <- vapply(
-  cases,
-  \(x) {
-    r <- count_providers(x$zip, x$radius, x$svc)
-    sprintf(
-      "| %s | %s | %s | %s | %s |",
-      x$label,
-      x$zip,
-      x$radius,
-      r[["status"]],
-      r[["providers"]]
-    )
+is_ids <- function(x) {
+  is.character(x) &&
+    !identical(x, "unexpected shape") &&
+    !identical(x, "malformed JSON")
+}
+
+describe_count <- function(r) {
+  if (is.null(r$ids)) {
+    ""
+  } else if (is_ids(r$ids) || length(r$ids) == 0) {
+    as.character(length(unique(r$ids)))
+  } else {
+    r$ids
+  }
+}
+
+near <- list(zip = "20176", radius = 10)
+singles <- lapply(services, \(s) fetch_ids(near$zip, near$radius, s))
+names(singles) <- services
+
+single_rows <- vapply(
+  services,
+  \(s) {
+    r <- singles[[s]]
+    sprintf("| %s | %s | %s |", s, r$status, describe_count(r))
   },
   character(1)
+)
+
+combos <- list(
+  c("hivtesting", "ryanwhite", "clinics"),
+  c("hivtesting", "stdtesting"),
+  c("hivtesting", "housing"),
+  services
+)
+
+combo_row <- function(svc) {
+  r <- fetch_ids(near$zip, near$radius, svc)
+  parts <- singles[svc]
+  label <- if (length(svc) == length(services)) {
+    "all 14"
+  } else {
+    paste(svc, collapse = ",")
+  }
+  usable <- all(vapply(
+    parts,
+    \(p) is_ids(p$ids) || length(p$ids) == 0 && !is.null(p$ids),
+    logical(1)
+  ))
+  if (!(is_ids(r$ids) || (length(r$ids) == 0 && !is.null(r$ids))) || !usable) {
+    return(sprintf(
+      "| %s | %s | %s | | | | |",
+      label,
+      r$status,
+      describe_count(r)
+    ))
+  }
+  ids <- unique(r$ids)
+  union_ids <- unique(unlist(lapply(parts, `[[`, "ids")))
+  inter_ids <- Reduce(intersect, lapply(parts, \(p) unique(p$ids)))
+  sprintf(
+    "| %s | %s | %d | %d | %d | %s | %s |",
+    label,
+    r$status,
+    length(ids),
+    length(union_ids),
+    length(inter_ids),
+    setequal(ids, union_ids),
+    setequal(ids, inter_ids)
+  )
+}
+
+combo_rows <- vapply(combos, combo_row, character(1))
+
+manhattan <- lapply(
+  list("hivtesting", services),
+  \(svc) {
+    r <- fetch_ids("10001", 1, svc)
+    label <- if (length(svc) > 1) "all 14" else svc
+    sprintf("| %s | %s | %s |", label, r$status, describe_count(r))
+  }
 )
 
 report <- c(
   paste0("## Services probe, ", format(Sys.time(), tz = "UTC", usetz = TRUE)),
   "",
-  "| Services | ZIP | Radius | Status | Providers |",
-  "|---|---|---|---|---|",
-  rows
+  "### One service at a time, ZIP 20176, radius 10",
+  "",
+  "| Service | Status | Providers |",
+  "|---|---|---|",
+  single_rows,
+  "",
+  "### Combinations, ZIP 20176, radius 10",
+  "",
+  "Union and intersection are of the provider IDs returned for each service alone. TRUE in a \"same as\" column means the combined request returned exactly that set.",
+  "",
+  "| Services | Status | Providers | Union of singles | Intersection of singles | Same as union | Same as intersection |",
+  "|---|---|---|---|---|---|---|",
+  combo_rows,
+  "",
+  "### ZIP 10001, radius 1",
+  "",
+  "| Services | Status | Providers |",
+  "|---|---|---|",
+  unlist(manhattan),
+  ""
 )
 
 summary_file <- Sys.getenv("GITHUB_STEP_SUMMARY")
