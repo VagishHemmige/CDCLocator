@@ -41,3 +41,30 @@
       i Valid values are:
         hivtesting, stdtesting, selftesting, preptesting, pep, condom, hepc, doxypep, mailintesting, ryanwhite, clinics, substanceabuse, mentalhealth, housing
 
+# cdc_providers() treats only an empty array as no matches
+
+    Code
+      cdc_providers("20176")
+    Condition
+      Error in `cdc_providers()`:
+      ! The CDC Locator API returned an unexpected response.
+      i Expected a JSON array of providers.
+
+---
+
+    Code
+      cdc_providers("20176")
+    Condition
+      Error in `cdc_providers()`:
+      ! The CDC Locator API returned an unexpected response.
+      i Expected a JSON array of providers.
+
+---
+
+    Code
+      cdc_providers("20176")
+    Condition
+      Error in `cdc_providers()`:
+      ! The CDC Locator API returned an unexpected response.
+      i Expected a JSON array of providers.
+

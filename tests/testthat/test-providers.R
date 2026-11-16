@@ -79,3 +79,19 @@ test_that("cdc_providers() returns zero rows when no providers match", {
   expect_equal(nrow(out), 0)
   expect_named(out, c("type", "id", "attributes"))
 })
+
+test_that("cdc_providers() treats only an empty array as no matches", {
+  local_fake_credentials()
+
+  local_mock_locator(raw_json_response("[]"))
+  expect_equal(nrow(cdc_providers("20176")), 0)
+
+  local_mock_locator(raw_json_response("null"))
+  expect_snapshot(cdc_providers("20176"), error = TRUE)
+
+  local_mock_locator(raw_json_response("{}"))
+  expect_snapshot(cdc_providers("20176"), error = TRUE)
+
+  local_mock_locator(raw_json_response('{"Message": "unexpected"}'))
+  expect_snapshot(cdc_providers("20176"), error = TRUE)
+})

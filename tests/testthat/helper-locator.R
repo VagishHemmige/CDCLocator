@@ -16,6 +16,15 @@ json_response <- function(body, status = 200L) {
   )
 }
 
+# Builds a response from literal JSON text, for shapes toJSON() can't produce.
+raw_json_response <- function(text, status = 200L) {
+  httr2::response(
+    status_code = status,
+    headers = list(`Content-Type` = "application/json"),
+    body = charToRaw(text)
+  )
+}
+
 # Mocks every request in the calling test with `response` and returns an
 # environment whose `req` holds the last request made.
 local_mock_locator <- function(response, env = parent.frame()) {
