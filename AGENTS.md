@@ -54,8 +54,25 @@ tibbles.
 - `R/utils.R`: small internal helpers.
 
 Read the relevant source and documentation before advising on or
-changing it. The package has no tests or CI yet; do not describe
-behavior as tested until it is.
+changing it. Offline tests mock every request;
+`tests/testthat/test-live.R` holds the live checks. GitHub Actions runs
+R CMD check, documentation and coverage checks on each PR, and the live
+tests only on request (`live-tests.yaml`).
+
+The API’s 2025 access instructions are not public and are partly out of
+date. Behavior observed on 2026-11-16 that the code relies on:
+
+- `/providers` requires both `radius` and `services`; leaving either out
+  gives HTTP 500 with a plain-text message.
+- Service values are lowercase (`hepc`, not the documented `Hepc`).
+- Validation errors are HTTP 500 with a plain-text body; a rejected
+  token is HTTP 403 with a JSON `Message`.
+- Requests from outside the US are blocked by CloudFront (HTTP 403,
+  HTML). GitHub-hosted runners are sometimes outside the US, so a failed
+  live run should be checked for this before it is treated as a package
+  defect.
+
+Recheck these against the live API when request or parsing code changes.
 
 ## Implementation and approval
 

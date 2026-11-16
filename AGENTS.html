@@ -58,7 +58,14 @@
 <code>R/enums.R</code>: the valid <code>services</code> values and their validator.</li>
 <li>
 <code>R/utils.R</code>: small internal helpers.</li>
-</ul><p>Read the relevant source and documentation before advising on or changing it. The package has no tests or CI yet; do not describe behavior as tested until it is.</p>
+</ul><p>Read the relevant source and documentation before advising on or changing it. Offline tests mock every request; <code>tests/testthat/test-live.R</code> holds the live checks. GitHub Actions runs R CMD check, documentation and coverage checks on each PR, and the live tests only on request (<code>live-tests.yaml</code>).</p>
+<p>The API’s 2025 access instructions are not public and are partly out of date. Behavior observed on 2026-11-16 that the code relies on:</p>
+<ul><li>
+<code>/providers</code> requires both <code>radius</code> and <code>services</code>; leaving either out gives HTTP 500 with a plain-text message.</li>
+<li>Service values are lowercase (<code>hepc</code>, not the documented <code>Hepc</code>).</li>
+<li>Validation errors are HTTP 500 with a plain-text body; a rejected token is HTTP 403 with a JSON <code>Message</code>.</li>
+<li>Requests from outside the US are blocked by CloudFront (HTTP 403, HTML). GitHub-hosted runners are sometimes outside the US, so a failed live run should be checked for this before it is treated as a package defect.</li>
+</ul><p>Recheck these against the live API when request or parsing code changes.</p>
 </div>
 <div class="section level2">
 <h2 id="implementation-and-approval">Implementation and approval<a class="anchor" aria-label="anchor" href="#implementation-and-approval"></a></h2>

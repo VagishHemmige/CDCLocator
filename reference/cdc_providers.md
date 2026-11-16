@@ -27,7 +27,11 @@ cdc_providers(
 
 - services:
 
-  Optional character vector of service enums.
+  Character vector of services to search for, matched in any case:
+  `"hivtesting"`, `"stdtesting"`, `"selftesting"`, `"preptesting"`,
+  `"pep"`, `"condom"`, `"hepc"`, `"doxypep"`, `"mailintesting"`,
+  `"ryanwhite"`, `"clinics"`, `"substanceabuse"`, `"mentalhealth"` or
+  `"housing"`. `NULL`, the default, searches for all of them.
 
 - client_id:
 
