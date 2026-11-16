@@ -58,31 +58,43 @@ out <- capture.output(source(".github/scripts/services-probe.R", local = TRUE))
 
 stopifnot(
   "a credential reached the output" = !any(grepl("SENTINEL", out)),
-  "hivtesting count" = any(grepl("^\\| hivtesting \\| 200 \\| 2 \\|$", out)),
+  "hivtesting count" = any(grepl(
+    "^\\| hivtesting \\| 200 \\| 2 \\| FALSE \\|$",
+    out
+  )),
   "empty array counts as 0" = any(grepl(
-    "^\\| selftesting \\| 200 \\| 0 \\|$",
+    "^\\| selftesting \\| 200 \\| 0 \\|  \\|$",
     out
   )),
   "null is not a count" = any(grepl(
-    "^\\| pep \\| 200 \\| unexpected shape \\|$",
+    "^\\| pep \\| 200 \\| unexpected shape \\|  \\|$",
     out
   )),
   "object is not a count" = any(grepl(
-    "^\\| condom \\| 200 \\| unexpected shape \\|$",
+    "^\\| condom \\| 200 \\| unexpected shape \\|  \\|$",
     out
   )),
   "malformed JSON labelled" = any(grepl(
-    "^\\| doxypep \\| 200 \\| malformed JSON \\|$",
+    "^\\| doxypep \\| 200 \\| malformed JSON \\|  \\|$",
     out
   )),
   "error status without a count" = any(grepl(
-    "^\\| mailintesting \\| 500 \\|  \\|$",
+    "^\\| mailintesting \\| 500 \\|  \\|  \\|$",
     out
   )),
   "any-of matching reads as union" = any(grepl(
-    "^\\| hivtesting,stdtesting \\| 200 \\| 2 \\| 2 \\| 1 \\| TRUE \\| FALSE \\|$",
+    "^\\| first 4 \\| 200 \\| 2 \\| 2 \\| 0 \\| TRUE \\| FALSE \\|$",
     out
-  ))
+  )),
+  "unusable singles leave the comparison blank" = any(grepl(
+    "^\\| all 14 \\| 200 \\| [0-9]+ \\| \\| \\| \\| \\|$",
+    out
+  )),
+  "every list-length and leave-one-out row present" = sum(grepl(
+    "^\\| (first [0-9]+|all but [a-z]+) \\|",
+    out
+  )) ==
+    24
 )
 cat(
   "services-probe offline check passed:",

@@ -78,7 +78,13 @@ provider_ids <- function(body) {
   if (!all(ok)) {
     return("unexpected shape")
   }
-  vapply(body, \(x) as.character(x$id), character(1))
+  ids <- vapply(body, \(x) as.character(x$id), character(1))
+  attr(ids, "types") <- vapply(
+    body,
+    \(x) if (length(x$type) == 1) as.character(x$type) else NA_character_,
+    character(1)
+  )
+  ids
 }
 
 is_ids <- function(x) {
@@ -105,29 +111,33 @@ single_rows <- vapply(
   services,
   \(s) {
     r <- singles[[s]]
-    sprintf("| %s | %s | %s |", s, r$status, describe_count(r))
+    types <- attr(r$ids, "types")
+    same <- if (length(types)) {
+      as.character(all(types == s, na.rm = FALSE))
+    } else {
+      ""
+    }
+    sprintf("| %s | %s | %s | %s |", s, r$status, describe_count(r), same)
   },
   character(1)
 )
 
-combos <- list(
-  c("hivtesting", "ryanwhite", "clinics"),
-  c("hivtesting", "stdtesting"),
-  c("hivtesting", "housing"),
-  services
+# Which part of the full list breaks the request: its length, or one value?
+combos <- c(
+  setNames(lapply(4:13, \(k) services[seq_len(k)]), paste("first", 4:13)),
+  setNames(
+    lapply(services, \(x) setdiff(services, x)),
+    paste("all but", services)
+  ),
+  list("all 14" = services)
 )
 
-combo_row <- function(svc) {
+combo_row <- function(svc, label) {
   r <- fetch_ids(near$zip, near$radius, svc)
   parts <- singles[svc]
-  label <- if (length(svc) == length(services)) {
-    "all 14"
-  } else {
-    paste(svc, collapse = ",")
-  }
   usable <- all(vapply(
     parts,
-    \(p) is_ids(p$ids) || length(p$ids) == 0 && !is.null(p$ids),
+    \(p) is_ids(p$ids) || (length(p$ids) == 0 && !is.null(p$ids)),
     logical(1)
   ))
   if (!(is_ids(r$ids) || (length(r$ids) == 0 && !is.null(r$ids))) || !usable) {
@@ -153,7 +163,7 @@ combo_row <- function(svc) {
   )
 }
 
-combo_rows <- vapply(combos, combo_row, character(1))
+combo_rows <- unname(mapply(combo_row, combos, names(combos)))
 
 manhattan <- lapply(
   list("hivtesting", services),
@@ -169,8 +179,8 @@ report <- c(
   "",
   "### One service at a time, ZIP 20176, radius 10",
   "",
-  "| Service | Status | Providers |",
-  "|---|---|---|",
+  "| Service | Status | Providers | Every `type` equals the service |",
+  "|---|---|---|---|",
   single_rows,
   "",
   "### Combinations, ZIP 20176, radius 10",
