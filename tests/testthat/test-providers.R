@@ -18,33 +18,72 @@ test_that("cdc_providers() sends zipcode, radius and services", {
   expect_equal(query$services, "hivtesting,pep")
 })
 
-test_that("cdc_providers() sends every service when services is NULL", {
-  # The API now requires both radius and services (observed 2026-11-16).
+test_that("cdc_providers() searches every service in batches of three", {
+  # One request with all 14 services returns no providers, while requests
+  # with up to three return the union of their results (observed 2026-11-16).
   local_fake_credentials()
   mock <- local_mock_locator(json_response(list()))
   cdc_providers("02110")
 
-  query <- httr2::url_parse(mock$req$url)$query
-  expect_named(query, c("zipcode", "radius", "services"))
-  expect_equal(query$radius, "10")
+  batches <- lapply(mock$reqs, req_services)
+  expect_equal(lengths(batches), c(3, 3, 3, 3, 2))
+  expect_equal(unlist(batches), .cdc_locator_services)
+  for (req in mock$reqs) {
+    query <- httr2::url_parse(req$url)$query
+    expect_equal(query$zipcode, "02110")
+    expect_equal(query$radius, "10")
+  }
+})
+
+test_that("cdc_providers() sends up to three services in one request", {
+  local_fake_credentials()
+  mock <- local_mock_locator(json_response(list()))
+  cdc_providers("02110", services = c("hivtesting", "pep", "hepc"))
+
+  expect_length(mock$reqs, 1)
+  expect_equal(req_services(mock$req), c("hivtesting", "pep", "hepc"))
+})
+
+test_that("cdc_providers() splits more than three services into batches", {
+  local_fake_credentials()
+  mock <- local_mock_locator(json_response(list()))
+  cdc_providers("02110", services = c("hivtesting", "pep", "hepc", "condom"))
+
   expect_equal(
-    strsplit(query$services, ",")[[1]],
-    c(
-      "hivtesting",
-      "stdtesting",
-      "selftesting",
-      "preptesting",
-      "pep",
-      "condom",
-      "hepc",
-      "doxypep",
-      "mailintesting",
-      "ryanwhite",
-      "clinics",
-      "substanceabuse",
-      "mentalhealth",
-      "housing"
-    )
+    lapply(mock$reqs, req_services),
+    list(c("hivtesting", "pep", "hepc"), "condom")
+  )
+})
+
+test_that("cdc_providers() combines batches and drops repeated providers", {
+  local_fake_credentials()
+  local_mock_locator(function(req) {
+    if ("hivtesting" %in% req_services(req)) {
+      json_response(list(fake_provider("a1"), fake_provider("b2")))
+    } else {
+      json_response(list(fake_provider("b2"), fake_provider("c3")))
+    }
+  })
+  out <- cdc_providers(
+    "02110",
+    services = c("hivtesting", "pep", "hepc", "condom")
+  )
+
+  expect_equal(out$id, c("a1", "b2", "c3"))
+})
+
+test_that("cdc_providers() fails if any batch fails", {
+  local_fake_credentials()
+  local_mock_locator(function(req) {
+    if ("condom" %in% req_services(req)) {
+      json_response(list(message = "error"), status = 500L)
+    } else {
+      json_response(list(fake_provider("a1")))
+    }
+  })
+  expect_error(
+    cdc_providers("02110", services = c("hivtesting", "pep", "hepc", "condom")),
+    class = "httr2_http_500"
   )
 })
 
