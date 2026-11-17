@@ -3,7 +3,7 @@
     Code
       .validate_cdc_locator_services(1)
     Condition
-      Error in `.validate_cdc_locator_services()`:
+      Error:
       ! `services` must be a character vector.
 
 ---
@@ -11,7 +11,7 @@
     Code
       .validate_cdc_locator_services(c("hivtesting", "nope"))
     Condition
-      Error in `.validate_cdc_locator_services()`:
+      Error:
       ! Invalid CDC Locator service enum(s):
       x nope
       i Valid values are:

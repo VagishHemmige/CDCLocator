@@ -35,11 +35,20 @@
     Code
       cdc_providers("02110", services = "nope")
     Condition
-      Error in `.validate_cdc_locator_services()`:
+      Error in `cdc_providers()`:
       ! Invalid CDC Locator service enum(s):
       x nope
       i Valid values are:
         hivtesting, stdtesting, selftesting, preptesting, pep, condom, hepc, doxypep, mailintesting, ryanwhite, clinics, substanceabuse, mentalhealth, housing
+
+# cdc_providers() rejects an empty services vector without a request
+
+    Code
+      cdc_providers("02110", services = character())
+    Condition
+      Error in `cdc_providers()`:
+      ! `services` must name at least one service.
+      i Use `services = NULL` to search every service.
 
 # cdc_providers() treats only an empty array as no matches
 

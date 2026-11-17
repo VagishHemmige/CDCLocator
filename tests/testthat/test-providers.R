@@ -113,6 +113,13 @@ test_that("cdc_providers() rejects providers without an id", {
   )
 })
 
+test_that("cdc_providers() rejects an empty services vector without a request", {
+  local_fake_credentials()
+  mock <- local_mock_locator(json_response(list()))
+  expect_snapshot(cdc_providers("02110", services = character()), error = TRUE)
+  expect_length(mock$reqs, 0)
+})
+
 test_that("cdc_providers() fails if any batch fails", {
   local_fake_credentials()
   local_mock_locator(function(req) {
