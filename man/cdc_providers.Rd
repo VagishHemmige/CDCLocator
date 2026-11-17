@@ -22,7 +22,7 @@ any case: \code{"hivtesting"}, \code{"stdtesting"}, \code{"selftesting"},
 \code{"preptesting"}, \code{"pep"}, \code{"condom"}, \code{"hepc"}, \code{"doxypep"},
 \code{"mailintesting"}, \code{"ryanwhite"}, \code{"clinics"}, \code{"substanceabuse"},
 \code{"mentalhealth"} or \code{"housing"}. \code{NULL}, the default, searches for all
-of them.}
+of them. More than three services take more than one request.}
 
 \item{client_id}{Optional CDC client ID override.}
 
@@ -34,4 +34,11 @@ A tibble of service providers.
 \description{
 Queries the CDC Locator API to return service providers within a given
 radius of a ZIP code.
+}
+\details{
+The API returns providers offering any of the requested services, but
+returned no providers when all 14 services were requested at once (observed
+2026-11-16). So services are requested at most three at a time, and the
+results are combined: the default, every service, takes five requests.
+Providers returned by more than one request are kept once, by \code{id}.
 }
