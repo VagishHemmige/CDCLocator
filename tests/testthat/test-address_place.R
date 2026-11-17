@@ -29,3 +29,9 @@ test_that("cdc_address_place() sends city and state and returns one row", {
     )
   )
 })
+
+test_that("cdc_address_place() errors name the function, not httr2", {
+  local_fake_credentials()
+  local_mock_locator(raw_json_response("city is not provided", status = 500L))
+  expect_snapshot(cdc_address_place("Boston", "MA"), error = TRUE)
+})

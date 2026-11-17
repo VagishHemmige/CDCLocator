@@ -59,9 +59,12 @@ Behavior observed on 2026-11-16 that the code relies on:
 - Service values are lowercase (`hepc`, not the documented `Hepc`).
 - Validation errors are HTTP 500 with a plain-text body; a rejected token is
   HTTP 403 with a JSON `Message`.
-- Requests from outside the US are blocked by CloudFront (HTTP 403, HTML).
-  GitHub-hosted runners are sometimes outside the US, so a failed live run
-  should be checked for this before it is treated as a package defect.
+- Requests from outside the US, and from Microsoft Azure addresses inside it,
+  get HTTP 403. GitHub-hosted runners run on either Azure or AWS, chosen by
+  GitHub: AWS runs worked, Azure runs were refused (2026-11-16), while the
+  same key worked from the maintainer's home connection (2026-11-17). Treat a
+  403 from a GitHub live run as the network, not a package defect, and run
+  live tests on the maintainer's machine.
 
 Recheck these against the live API when request or parsing code changes.
 
