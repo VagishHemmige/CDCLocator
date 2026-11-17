@@ -72,6 +72,47 @@ test_that("cdc_providers() combines batches and drops repeated providers", {
   expect_equal(out$id, c("a1", "b2", "c3"))
 })
 
+test_that("cdc_providers() combines empty and non-empty batches in any order", {
+  local_fake_credentials()
+  four <- c("hivtesting", "pep", "hepc", "condom")
+  for (empty_first in c(TRUE, FALSE)) {
+    local_mock_locator(function(req) {
+      if (("hivtesting" %in% req_services(req)) == empty_first) {
+        json_response(list())
+      } else {
+        json_response(list(fake_provider("a1")))
+      }
+    })
+    out <- cdc_providers("02110", services = four)
+
+    expect_equal(out$id, "a1")
+    expect_equal(cdc_providers_tidy(out)$provider_id, "a1")
+  }
+})
+
+test_that("cdc_providers() rejects providers without an id", {
+  local_fake_credentials()
+  no_id <- function(id) {
+    provider <- fake_provider(id)
+    provider$id <- NULL
+    provider
+  }
+
+  local_mock_locator(json_response(list(no_id("a1"), no_id("b2"))))
+  expect_error(
+    cdc_providers("02110", services = "hivtesting"),
+    class = "cdclocator_unexpected_response"
+  )
+
+  local_mock_locator(raw_json_response(
+    '[{"type": "provider", "id": null}, {"type": "provider", "id": ""}]'
+  ))
+  expect_error(
+    cdc_providers("02110", services = "hivtesting"),
+    class = "cdclocator_unexpected_response"
+  )
+})
+
 test_that("cdc_providers() fails if any batch fails", {
   local_fake_credentials()
   local_mock_locator(function(req) {

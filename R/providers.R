@@ -67,7 +67,13 @@ cdc_providers <- function(
     )
   })
 
-  out <- dplyr::bind_rows(unname(results))
+  # An empty batch has a different `attributes` type from a populated one, so
+  # bind only populated batches; if none are, return the empty schema.
+  populated <- Filter(\(x) nrow(x) > 0, results)
+  if (length(populated) == 0) {
+    return(results[[1]])
+  }
+  out <- dplyr::bind_rows(unname(populated))
   out[!duplicated(out$id), ]
 }
 
@@ -115,6 +121,19 @@ cdc_providers <- function(
       c(
         "The CDC Locator API returned an unexpected response.",
         "i" = "Expected a JSON array of providers."
+      ),
+      class = "cdclocator_unexpected_response",
+      call = call
+    )
+  }
+
+  # Providers are combined across batches by `id`, so every record needs one.
+  ids <- body$id
+  if (is.null(ids) || any(is.na(ids)) || !all(nzchar(as.character(ids)))) {
+    cli::cli_abort(
+      c(
+        "The CDC Locator API returned an unexpected response.",
+        "i" = "Every provider should have a non-empty {.field id}."
       ),
       class = "cdclocator_unexpected_response",
       call = call
