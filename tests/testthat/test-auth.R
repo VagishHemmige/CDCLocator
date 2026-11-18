@@ -39,7 +39,8 @@ local_temp_home <- function(env = parent.frame()) {
     R_ENVIRON_USER = file.path(home, ".Renviron"),
     .local_envir = env
   )
-  home
+  # The package normalizes paths (on macOS, /var is /private/var).
+  normalizePath(home, winslash = "/")
 }
 
 test_that("cdc_locator_set_credentials() sets them for this session only", {
@@ -99,4 +100,221 @@ test_that("cdc_locator_set_credentials() rejects missing or malformed values", {
   )
   expect_snapshot(cdc_locator_set_credentials("fake-client-id"), error = TRUE)
   expect_equal(Sys.getenv("CDC_LOCATOR_CLIENT_ID"), "")
+})
+
+# Pretends the session is interactive and answers the confirmation with
+# `answer`. Returns an environment whose `question` holds what was asked.
+local_confirm <- function(answer, env = parent.frame()) {
+  seen <- new.env()
+  local_mocked_bindings(
+    .is_interactive = function() TRUE,
+    .ask_yes_no = function(question) {
+      seen$question <- question
+      answer
+    },
+    .env = env
+  )
+  seen
+}
+
+test_that("install = TRUE needs an interactive session and changes nothing without one", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  local_mocked_bindings(.is_interactive = function() FALSE)
+
+  expect_snapshot(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    error = TRUE
+  )
+  expect_false(file.exists(file.path(home, ".Renviron")))
+  expect_equal(Sys.getenv("CDC_LOCATOR_CLIENT_ID"), "")
+})
+
+test_that("install = TRUE asks first and writes nothing if the answer is no", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  asked <- local_confirm(FALSE)
+
+  expect_snapshot(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    transform = \(x) gsub(home, "<home>", x, fixed = TRUE)
+  )
+  expect_match(asked$question, file.path(home, ".Renviron"), fixed = TRUE)
+  expect_no_match(asked$question, "fake-client")
+  expect_false(file.exists(file.path(home, ".Renviron")))
+  expect_equal(Sys.getenv("CDC_LOCATOR_CLIENT_ID"), "fake-client-id")
+})
+
+test_that("install = TRUE writes both lines after a yes, without showing them", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  local_confirm(TRUE)
+
+  messages <- capture_messages(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    )
+  )
+  path <- file.path(home, ".Renviron")
+
+  expect_equal(
+    readLines(path),
+    c(
+      "CDC_LOCATOR_CLIENT_ID=fake-client-id",
+      "CDC_LOCATOR_CLIENT_TOKEN=fake-client-token"
+    )
+  )
+  expect_no_match(messages, "fake-client")
+  expect_match(messages, "Saved", all = FALSE)
+  skip_on_os("windows")
+  expect_equal(format(file.mode(path)), "600")
+})
+
+test_that("install = TRUE replaces old credential lines and keeps everything else", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  path <- file.path(home, ".Renviron")
+  # No newline at the end, as some editors leave it.
+  writeChar(
+    paste(
+      "OTHER_KEY=keep-me",
+      "CDC_LOCATOR_CLIENT_ID=old-id",
+      " CDC_LOCATOR_CLIENT_TOKEN = old-token",
+      "# a comment",
+      "LAST=also-kept",
+      sep = "\n"
+    ),
+    path,
+    eos = NULL
+  )
+  local_confirm(TRUE)
+
+  suppressMessages(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    )
+  )
+
+  expect_equal(
+    readLines(path),
+    c(
+      "OTHER_KEY=keep-me",
+      "# a comment",
+      "LAST=also-kept",
+      "CDC_LOCATOR_CLIENT_ID=fake-client-id",
+      "CDC_LOCATOR_CLIENT_TOKEN=fake-client-token"
+    )
+  )
+})
+
+test_that("install = TRUE uses R_ENVIRON_USER when it names a file", {
+  home <- local_temp_home()
+  other <- file.path(home, "elsewhere.Renviron")
+  withr::local_envvar(
+    R_ENVIRON_USER = other,
+    CDC_LOCATOR_CLIENT_ID = NA,
+    CDC_LOCATOR_CLIENT_TOKEN = NA
+  )
+  local_confirm(TRUE)
+
+  suppressMessages(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    )
+  )
+
+  expect_true(file.exists(other))
+  expect_false(file.exists(file.path(home, ".Renviron")))
+})
+
+test_that("install = TRUE warns when the current folder has its own .Renviron", {
+  home <- local_temp_home()
+  # With R_ENVIRON_USER unset, R reads a .Renviron in the starting folder
+  # instead of the home one.
+  withr::local_envvar(
+    R_ENVIRON_USER = NA,
+    CDC_LOCATOR_CLIENT_ID = NA,
+    CDC_LOCATOR_CLIENT_TOKEN = NA
+  )
+  project <- withr::local_tempdir()
+  writeLines("SOMETHING=else", file.path(project, ".Renviron"))
+  withr::local_dir(project)
+  local_confirm(TRUE)
+
+  expect_warning(
+    suppressMessages(
+      cdc_locator_set_credentials(
+        "fake-client-id",
+        "fake-client-token",
+        install = TRUE
+      )
+    ),
+    "this folder has its own"
+  )
+  expect_equal(readLines(file.path(project, ".Renviron")), "SOMETHING=else")
+  expect_length(readLines(file.path(home, ".Renviron")), 2)
+})
+
+test_that("install = TRUE doesn't warn when R_ENVIRON_USER chooses the file", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  project <- withr::local_tempdir()
+  writeLines("SOMETHING=else", file.path(project, ".Renviron"))
+  withr::local_dir(project)
+  local_confirm(TRUE)
+
+  expect_no_warning(suppressMessages(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    )
+  ))
+})
+
+test_that("install = TRUE refuses values .Renviron can't hold, before writing", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  local_confirm(TRUE)
+
+  expect_snapshot(
+    cdc_locator_set_credentials("fake id", "fake-client-token", install = TRUE),
+    error = TRUE
+  )
+  expect_snapshot(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake\ntoken",
+      install = TRUE
+    ),
+    error = TRUE
+  )
+  expect_false(file.exists(file.path(home, ".Renviron")))
+})
+
+test_that("install must be TRUE or FALSE", {
+  local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  expect_snapshot(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = "yes"
+    ),
+    error = TRUE
+  )
 })
