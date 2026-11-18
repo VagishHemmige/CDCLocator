@@ -1,3 +1,7 @@
+# Requests are paced half a second apart in normal use; not in tests, except
+# the test of the pacing itself.
+options(cdclocator.min_gap = 0)
+
 # Sets obviously fake credentials for the calling test. Never use real ones.
 local_fake_credentials <- function(env = parent.frame()) {
   withr::local_envvar(
@@ -78,4 +82,35 @@ fake_provider <- function(
       distance = 1.2
     )
   )
+}
+
+# The value a request will send for a header. httr2 >= 1.1 stores redacted
+# headers as references and reveals them with req_get_headers(); older
+# versions store plain strings.
+req_header_value <- function(req, name) {
+  httr2_ns <- asNamespace("httr2")
+  if (exists("req_get_headers", envir = httr2_ns)) {
+    httr2::req_get_headers(req, redacted = "reveal")[[name]]
+  } else {
+    req$headers[[name]]
+  }
+}
+
+# Everything printing an object writes, to standard output or as messages,
+# without showing it.
+printed_text <- function(x) {
+  messages <- character()
+  output <- utils::capture.output(withCallingHandlers(
+    print(x),
+    message = function(m) {
+      messages <<- c(messages, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  ))
+  c(output, messages)
+}
+
+# The condition an expression signals.
+catch_error <- function(expr) {
+  tryCatch(expr, error = \(e) e)
 }

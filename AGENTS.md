@@ -59,12 +59,16 @@ Behavior observed on 2026-11-16 that the code relies on:
 - Service values are lowercase (`hepc`, not the documented `Hepc`).
 - Validation errors are HTTP 500 with a plain-text body; a rejected token is
   HTTP 403 with a JSON `Message`.
-- Requests from outside the US, and from Microsoft Azure addresses inside it,
-  get HTTP 403. GitHub-hosted runners run on either Azure or AWS, chosen by
-  GitHub: AWS runs worked, Azure runs were refused (2026-11-16), while the
-  same key worked from the maintainer's home connection (2026-11-17). Treat a
-  403 from a GitHub live run as the network, not a package defect, and run
-  live tests on the maintainer's machine.
+- Requests from outside the US got HTTP 403 from CloudFront (an HTML page).
+  On 2026-11-16, GitHub-hosted runners on AWS us-east-1 reached the API and
+  runners on Azure (eastus2, centralus) got 403 on every request, while the
+  same key worked from the maintainer's home connection on 2026-11-17. This
+  is one day's observation, not a guarantee from the provider.
+- A 403 can also mean a wrong or inactive key, so a 403 in a live run is not
+  evidence of either cause by itself. Before assigning a cause, check the
+  runner's cloud and region in the job log and the sanitized error text, and
+  repeat the same request at the same revision from a network known to work
+  (usually the maintainer's machine).
 
 Recheck these against the live API when request or parsing code changes.
 

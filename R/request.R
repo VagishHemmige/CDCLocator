@@ -42,8 +42,6 @@
     httr2::req_timeout(30) |>
     # 429 and 503 only; the API reports bad input as 500, which must not retry.
     httr2::req_retry(max_tries = 3) |>
-    # The default provider search makes five requests; space them out.
-    httr2::req_throttle(rate = 2, realm = "locator-api.hiv.gov") |>
     httr2::req_error(body = \(resp) .cdc_locator_error_body(resp, auth))
 }
 
@@ -87,11 +85,66 @@
   c(message, hint)
 }
 
-# Removes credential values from text before it is shown. Done on the full
-# text, before any truncation, so no partial value can survive.
+# When the last request was sent, shared by all calls in the session.
+.cdc_locator_state <- new.env(parent = emptyenv())
+
+# Waits until at least `min_gap` seconds have passed since the previous
+# request. The default provider search makes five requests, so this keeps it
+# to about two per second. Done here rather than with httr2::req_throttle(),
+# whose token bucket (httr2 >= 1.1) allows short bursts. Tests set the
+# `cdclocator.min_gap` option to 0 to run quickly.
+.cdc_locator_wait <- function(min_gap = getOption("cdclocator.min_gap", 0.5)) {
+  last <- .cdc_locator_state$last
+  if (!is.null(last)) {
+    wait <- min_gap - as.numeric(difftime(Sys.time(), last, units = "secs"))
+    if (wait > 0) {
+      Sys.sleep(wait)
+    }
+  }
+  .cdc_locator_state$last <- Sys.time()
+  invisible()
+}
+
+# Removes credential values from text before it is shown. Every occurrence of
+# every value is found in the original text first, and overlapping or touching
+# matches are merged, so one value can't break a match of another (for example
+# a client ID that is the start of the token). Done on the full text, before
+# any truncation.
 .scrub_credentials <- function(text, auth) {
-  for (value in auth[nzchar(auth)]) {
-    text <- gsub(value, "<REDACTED>", text, fixed = TRUE)
+  values <- unique(auth[nzchar(auth)])
+  spans <- do.call(
+    rbind,
+    lapply(values, \(value) {
+      starts <- gregexpr(value, text, fixed = TRUE)[[1]]
+      starts <- starts[starts > 0]
+      if (length(starts) == 0) {
+        return(NULL)
+      }
+      cbind(start = starts, end = starts + nchar(value) - 1)
+    })
+  )
+  if (is.null(spans)) {
+    return(text)
+  }
+
+  spans <- spans[order(spans[, "start"]), , drop = FALSE]
+  merged <- spans[1, , drop = FALSE]
+  for (i in seq_len(nrow(spans))[-1]) {
+    last <- nrow(merged)
+    if (spans[i, "start"] <= merged[last, "end"] + 1) {
+      merged[last, "end"] <- max(merged[last, "end"], spans[i, "end"])
+    } else {
+      merged <- rbind(merged, spans[i, ])
+    }
+  }
+
+  # Replace from the end so earlier positions stay valid.
+  for (i in rev(seq_len(nrow(merged)))) {
+    text <- paste0(
+      substr(text, 1, merged[i, "start"] - 1),
+      "<REDACTED>",
+      substr(text, merged[i, "end"] + 1, nchar(text))
+    )
   }
   text
 }
@@ -106,6 +159,7 @@
 #' @return Parsed JSON content (simplified).
 #' @noRd
 .perform_cdc_locator_request <- function(req, call = parent.frame()) {
+  .cdc_locator_wait()
   resp <- httr2::req_perform(req, error_call = call)
 
   httr2::resp_body_json(resp, simplifyVector = TRUE)
