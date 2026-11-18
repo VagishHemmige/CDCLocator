@@ -97,3 +97,13 @@
       Error in `cdc_locator_set_credentials()`:
       ! `install` must be `TRUE` or `FALSE`.
 
+# install = TRUE saves nothing if the file can't be protected
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake-client-token", install = TRUE)
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! Couldn't make a file in '<home>' readable only by you.
+      i The credentials are set for this session, but nothing was saved.
+      i Add them to '<home>/.Renviron' yourself, and make it readable only by you.
+

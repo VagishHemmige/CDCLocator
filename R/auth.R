@@ -54,11 +54,13 @@
 #' With `install = TRUE`, the function first asks whether to save the
 #' credentials, naming the file, and writes only after you answer yes. It
 #' writes to the file named by the `R_ENVIRON_USER` environment variable if
-#' that is set, and otherwise to `.Renviron` in your home folder. Any existing
+#' that is set, and otherwise to `.Renviron` in the home folder R uses at
+#' startup (on Windows, `R_USER` if set, then `HOME`). Any existing
 #' `CDC_LOCATOR_CLIENT_ID` and `CDC_LOCATOR_CLIENT_TOKEN` lines are replaced,
-#' and every other line is kept. A new file is made readable only by you,
-#' where the operating system allows. Because it must ask, `install = TRUE`
-#' only works in an interactive session.
+#' and every other line is kept. The file is made readable only by you before
+#' the credentials are written to it; if that isn't possible, nothing is saved.
+#' (On Windows, files are protected by the permissions of your home folder.)
+#' Because it must ask, `install = TRUE` only works in an interactive session.
 #'
 #' R reads only one user `.Renviron` when it starts. If the folder you start R
 #' in (in RStudio, the project's folder) has its own `.Renviron`, R reads that
@@ -160,7 +162,7 @@ cdc_locator_set_credentials <- function(
     return(invisible(NULL))
   }
 
-  .write_renviron(path, client_id, client_token)
+  .write_renviron(path, client_id, client_token, call)
   cli::cli_inform(c(
     "v" = "Locator API credentials set for this R session and saved to {.file {path}}.",
     "i" = "Saved credentials are read each time R starts."
@@ -200,33 +202,77 @@ cdc_locator_set_credentials <- function(
 }
 
 # The user .Renviron R reads at startup when no project file is present:
-# R_ENVIRON_USER if set, otherwise the one in the home folder.
+# R_ENVIRON_USER if set, otherwise .Renviron in R's home folder, found the way
+# R finds it (on Windows, R_USER before HOME).
 .renviron_path <- function() {
   path <- Sys.getenv("R_ENVIRON_USER")
   if (!nzchar(path)) {
-    path <- file.path(Sys.getenv("HOME", path.expand("~")), ".Renviron")
+    path <- path.expand("~/.Renviron")
   }
-  normalizePath(path, winslash = "/", mustWork = FALSE)
+  # Resolve the folder, which exists, rather than the file, which may not.
+  folder <- dirname(path)
+  if (dir.exists(folder)) {
+    folder <- normalizePath(folder, winslash = "/")
+  }
+  file.path(folder, basename(path))
 }
 
-# Replaces any existing credential lines with the new ones and keeps every
-# other line. A new file is made readable only by its owner.
-.write_renviron <- function(path, client_id, client_token) {
-  is_new <- !file.exists(path)
-  lines <- if (is_new) character() else readLines(path, warn = FALSE)
+# Saves the credentials without ever leaving them in a file others can read.
+# The new contents go into a temporary file in the same folder, which is made
+# owner-only and checked before anything secret is written, and then replaces
+# the old file. Any existing credential lines are replaced; every other line
+# is kept. If any step fails, the old file is left as it was.
+.write_renviron <- function(path, client_id, client_token, call) {
+  lines <- if (file.exists(path)) readLines(path, warn = FALSE) else character()
   pattern <- "^\\s*(CDC_LOCATOR_CLIENT_ID|CDC_LOCATOR_CLIENT_TOKEN)\\s*="
-  lines <- lines[!grepl(pattern, lines)]
   lines <- c(
-    lines,
+    lines[!grepl(pattern, lines)],
     paste0("CDC_LOCATOR_CLIENT_ID=", client_id),
     paste0("CDC_LOCATOR_CLIENT_TOKEN=", client_token)
   )
-  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
-  writeLines(lines, path)
-  if (is_new) {
-    Sys.chmod(path, mode = "0600")
+
+  folder <- dirname(path)
+  dir.create(folder, recursive = TRUE, showWarnings = FALSE)
+  temp <- tempfile(".Renviron-", tmpdir = folder)
+  on.exit(unlink(temp), add = TRUE)
+
+  old_mask <- Sys.umask("077")
+  created <- file.create(temp)
+  Sys.umask(old_mask)
+
+  not_saved <- c(
+    "i" = "The credentials are set for this session, but nothing was saved.",
+    "i" = "Add them to {.file {path}} yourself, and make it readable only by you."
+  )
+  if (!created || !.protect_file(temp)) {
+    cli::cli_abort(
+      c(
+        "Couldn't make a file in {.file {folder}} readable only by you.",
+        not_saved
+      ),
+      call = call
+    )
+  }
+
+  writeLines(lines, temp)
+  if (!file.rename(temp, path)) {
+    cli::cli_abort(
+      c("Couldn't replace {.file {path}}.", not_saved),
+      call = call
+    )
   }
   invisible(path)
+}
+
+# Makes a file readable and writable by its owner only, and checks that it
+# worked. Windows protects files through folder permissions instead, and a
+# user's home folder is private by default, so there's nothing to check.
+.protect_file <- function(path) {
+  if (.Platform$OS.type == "windows") {
+    return(TRUE)
+  }
+  Sys.chmod(path, mode = "0600", use_umask = FALSE)
+  identical(format(file.mode(path)), "600")
 }
 
 # R reads a .Renviron in the starting folder instead of the user file. Warn

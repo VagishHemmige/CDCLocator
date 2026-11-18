@@ -33,14 +33,19 @@ test_that(".has_cdc_locator_credentials() needs both variables", {
 # Runs `code` with a temporary home folder and user .Renviron, so a test can
 # check that nothing is written to the real ones.
 local_temp_home <- function(env = parent.frame()) {
-  home <- withr::local_tempdir(.local_envir = env)
+  # Normalize the folder first and build every path from it, so the paths
+  # match the package's own (on macOS /var is /private/var; on Windows short
+  # and long names differ).
+  home <- normalizePath(
+    withr::local_tempdir(.local_envir = env),
+    winslash = "/"
+  )
   withr::local_envvar(
     HOME = home,
     R_ENVIRON_USER = file.path(home, ".Renviron"),
     .local_envir = env
   )
-  # The package normalizes paths (on macOS, /var is /private/var).
-  normalizePath(home, winslash = "/")
+  home
 }
 
 test_that("cdc_locator_set_credentials() sets them for this session only", {
@@ -254,6 +259,11 @@ test_that("install = TRUE warns when the current folder has its own .Renviron", 
   writeLines("SOMETHING=else", file.path(project, ".Renviron"))
   withr::local_dir(project)
   local_confirm(TRUE)
+  # R caches the home folder, so point the default file at the test's home
+  # rather than letting a test reach the real one.
+  local_mocked_bindings(.renviron_path = function() {
+    file.path(home, ".Renviron")
+  })
 
   expect_warning(
     suppressMessages(
@@ -317,4 +327,76 @@ test_that("install must be TRUE or FALSE", {
     ),
     error = TRUE
   )
+})
+
+test_that("install = TRUE makes an existing readable .Renviron owner-only", {
+  skip_on_os("windows")
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  path <- file.path(home, ".Renviron")
+  writeLines("OTHER_KEY=keep-me", path)
+  Sys.chmod(path, mode = "0644")
+  local_confirm(TRUE)
+
+  suppressMessages(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    )
+  )
+
+  expect_equal(format(file.mode(path)), "600")
+  expect_equal(readLines(path)[1], "OTHER_KEY=keep-me")
+})
+
+test_that("install = TRUE saves nothing if the file can't be protected", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  path <- file.path(home, ".Renviron")
+  writeLines("OTHER_KEY=keep-me", path)
+  local_confirm(TRUE)
+  local_mocked_bindings(.protect_file = function(path) FALSE)
+
+  expect_snapshot(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    error = TRUE,
+    transform = \(x) gsub(home, "<home>", x, fixed = TRUE)
+  )
+  expect_equal(readLines(path), "OTHER_KEY=keep-me")
+  expect_equal(list.files(home, all.files = TRUE, no.. = TRUE), ".Renviron")
+  expect_equal(Sys.getenv("CDC_LOCATOR_CLIENT_ID"), "fake-client-id")
+})
+
+test_that("the default .Renviron is the one R reads at startup", {
+  # A fresh R process, so R works out its home folder from the variables set
+  # here. On Windows, R_USER comes before HOME.
+  skip_on_cran()
+  r_user <- normalizePath(withr::local_tempdir(), winslash = "/")
+  home <- normalizePath(withr::local_tempdir(), winslash = "/")
+  script <- withr::local_tempfile(fileext = ".R")
+  writeLines(
+    c(
+      paste0(
+        ".renviron_path <- ",
+        paste(deparse(.renviron_path), collapse = "\n")
+      ),
+      "cat(.renviron_path())"
+    ),
+    script
+  )
+  withr::local_envvar(R_USER = r_user, HOME = home, R_ENVIRON_USER = NA)
+
+  out <- system2(
+    file.path(R.home("bin"), "Rscript"),
+    c("--vanilla", shQuote(script)),
+    stdout = TRUE
+  )
+
+  expected <- if (.Platform$OS.type == "windows") r_user else home
+  expect_equal(out, file.path(expected, ".Renviron"))
 })
