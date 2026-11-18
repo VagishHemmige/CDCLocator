@@ -2,6 +2,11 @@
 # CDC_LOCATOR_LIVE_TESTS=true and real credentials in the environment, on the
 # maintainer's machine or in live-tests.yaml. Keep requests few and small.
 
+test_that("live tests run with the package's real request pacing", {
+  skip_if_not_live()
+  expect_null(getOption("cdclocator.min_gap"))
+})
+
 test_that("cdc_providers() finds providers with the default services", {
   # The default searches all 14 services in five requests.
   skip_if_not_live()

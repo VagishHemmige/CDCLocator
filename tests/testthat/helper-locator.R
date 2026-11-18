@@ -29,6 +29,9 @@ raw_json_response <- function(text, status = 200L) {
 # or a function of the request that returns one. Returns an environment whose
 # `req` holds the last request and `reqs` every request, in order.
 local_mock_locator <- function(response, env = parent.frame()) {
+  # Mocked requests need no pacing; the option is restored when the test ends.
+  # Live tests don't use this helper, so they keep the real pacing.
+  withr::local_options(cdclocator.min_gap = 0, .local_envir = env)
   seen <- new.env()
   seen$reqs <- list()
   httr2::local_mocked_responses(
@@ -86,4 +89,35 @@ fake_provider <- function(
       distance = 1.2
     )
   )
+}
+
+# The value a request will send for a header. httr2 >= 1.1 stores redacted
+# headers as references and reveals them with req_get_headers(); older
+# versions store plain strings.
+req_header_value <- function(req, name) {
+  httr2_ns <- asNamespace("httr2")
+  if (exists("req_get_headers", envir = httr2_ns)) {
+    httr2::req_get_headers(req, redacted = "reveal")[[name]]
+  } else {
+    req$headers[[name]]
+  }
+}
+
+# Everything printing an object writes, to standard output or as messages,
+# without showing it.
+printed_text <- function(x) {
+  messages <- character()
+  output <- utils::capture.output(withCallingHandlers(
+    print(x),
+    message = function(m) {
+      messages <<- c(messages, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  ))
+  c(output, messages)
+}
+
+# The condition an expression signals.
+catch_error <- function(expr) {
+  tryCatch(expr, error = \(e) e)
 }

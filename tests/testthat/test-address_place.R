@@ -29,3 +29,13 @@ test_that("cdc_address_place() sends city and state and returns one row", {
     )
   )
 })
+
+test_that("cdc_address_place() errors name the function, not httr2", {
+  local_fake_credentials()
+  local_mock_locator(raw_json_response("city is not provided", status = 500L))
+  err <- catch_error(cdc_address_place("Boston", "MA"))
+
+  expect_s3_class(err, "httr2_http_500")
+  expect_equal(as.character(err$call[[1]]), "cdc_address_place")
+  expect_match(conditionMessage(err), "city is not provided", fixed = TRUE)
+})

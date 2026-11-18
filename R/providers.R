@@ -103,7 +103,7 @@ cdc_providers <- function(
     client_token = client_token
   )
 
-  body <- .perform_cdc_locator_request(req)
+  body <- .perform_cdc_locator_request(req, call = call)
 
   # No matching providers comes back as an empty JSON array, which parses to
   # an unnamed empty list. Providers parse to a data frame. Anything else

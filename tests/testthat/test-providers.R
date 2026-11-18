@@ -182,3 +182,12 @@ test_that("cdc_providers() treats only an empty array as no matches", {
   local_mock_locator(raw_json_response('{"Message": "unexpected"}'))
   expect_snapshot(cdc_providers("20176"), error = TRUE)
 })
+
+test_that("cdc_providers() errors name the function, not an internal helper", {
+  local_fake_credentials()
+  local_mock_locator(raw_json_response("radius is not provided", status = 500L))
+  err <- catch_error(cdc_providers("02110", services = "hivtesting"))
+
+  expect_s3_class(err, "httr2_http_500")
+  expect_equal(as.character(err$call[[1]]), "cdc_providers")
+})
