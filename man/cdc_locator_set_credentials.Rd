@@ -28,11 +28,13 @@ The values are never printed.
 With \code{install = TRUE}, the function first asks whether to save the
 credentials, naming the file, and writes only after you answer yes. It
 writes to the file named by the \code{R_ENVIRON_USER} environment variable if
-that is set, and otherwise to \code{.Renviron} in your home folder. Any existing
+that is set, and otherwise to \code{.Renviron} in the home folder R uses at
+startup (on Windows, \code{R_USER} if set, then \code{HOME}). Any existing
 \code{CDC_LOCATOR_CLIENT_ID} and \code{CDC_LOCATOR_CLIENT_TOKEN} lines are replaced,
-and every other line is kept. A new file is made readable only by you,
-where the operating system allows. Because it must ask, \code{install = TRUE}
-only works in an interactive session.
+and every other line is kept. The file is made readable only by you before
+the credentials are written to it; if that isn't possible, nothing is saved.
+(On Windows, files are protected by the permissions of your home folder.)
+Because it must ask, \code{install = TRUE} only works in an interactive session.
 
 R reads only one user \code{.Renviron} when it starts. If the folder you start R
 in (in RStudio, the project's folder) has its own \code{.Renviron}, R reads that
