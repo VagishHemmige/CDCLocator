@@ -57,6 +57,9 @@ Behavior observed on 2026-11-16 that the code relies on:
 - `/providers` requires both `radius` and `services`; leaving either out gives
   HTTP 500 with a plain-text message.
 - Service values are lowercase (`hepc`, not the documented `Hepc`).
+- Services combine as "any of": a request with two or three services returned
+  the union of their single-service results. All 14 in one request returned
+  no providers, so `cdc_providers()` sends at most three per request.
 - Validation errors are HTTP 500 with a plain-text body; a rejected token is
   HTTP 403 with a JSON `Message`.
 - Requests from outside the US are blocked by CloudFront (HTTP 403, HTML).

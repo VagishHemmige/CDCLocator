@@ -2,19 +2,30 @@
 # CDC_LOCATOR_LIVE_TESTS=true and real credentials in the environment, on the
 # maintainer's machine or in live-tests.yaml. Keep requests few and small.
 
-test_that("cdc_providers() returns providers for a real ZIP code", {
+test_that("cdc_providers() finds providers with the default services", {
+  # The default searches all 14 services in five requests.
   skip_if_not_live()
   out <- cdc_providers("10001", radius = 1)
 
   expect_s3_class(out, "tbl_df")
   expect_gt(nrow(out), 0)
+  expect_false(anyDuplicated(out$id) > 0)
 })
 
-test_that("cdc_providers_tidy() handles a real response", {
+test_that("cdc_providers_tidy() flattens real provider rows", {
   skip_if_not_live()
-  out <- cdc_providers_tidy(cdc_providers("10001", radius = 1))
+  out <- cdc_providers_tidy(
+    cdc_providers("10001", radius = 1, services = "hivtesting")
+  )
 
-  expect_contains(names(out), c("provider_id", "name", "zipcode", "latitude"))
+  expect_gt(nrow(out), 0)
+  expect_contains(
+    names(out),
+    c("provider_id", "name", "zipcode", "latitude", "languages", "distance")
+  )
+  expect_type(out$name, "character")
+  expect_type(out$latitude, "double")
+  expect_type(out$languages, "list")
 })
 
 test_that("cdc_address_place() and cdc_address_point() return a ZIP code", {
