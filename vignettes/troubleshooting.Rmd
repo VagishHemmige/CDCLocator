@@ -1,0 +1,137 @@
+---
+title: "Troubleshooting"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Troubleshooting}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+This article lists the errors and surprises you may meet, what each means, and
+what to do. Errors from the package name the function you called and, where it
+matters, the argument.
+
+## Credentials
+
+### "CDC Locator API credentials not found"
+
+R can't find your client ID and token, so nothing was sent.
+
+- If you added them to `.Renviron`, restart R: the file is read at startup.
+- Check the names are exactly `CDC_LOCATOR_CLIENT_ID` and
+  `CDC_LOCATOR_CLIENT_TOKEN`.
+- Check, without printing the values:
+
+```{r}
+nzchar(Sys.getenv(c("CDC_LOCATOR_CLIENT_ID", "CDC_LOCATOR_CLIENT_TOKEN")))
+```
+
+`vignette("credentials-and-networks")` covers the ways to set them.
+
+### "`client_id` must be a single non-empty string"
+
+`cdc_locator_set_credentials()` got an empty, missing or multi-value argument.
+The message names the argument but never shows its value.
+
+## HTTP errors from the API
+
+These start with `HTTP` and a status code. When the API sent an explanation,
+the error adds it after "The API said:", with your credentials removed.
+
+### HTTP 403 Forbidden
+
+The API refused the request. There are two usual causes, and the error lists
+both:
+
+- **The key was refused.** The ID or token is wrong, has expired or has been
+  revoked. Check `.Renviron` for typos, extra spaces or quotes, and restart R.
+  If it still fails from a network that has worked before, contact HIV.gov.
+- **The network was refused.** The API has refused requests from outside the
+  US and from some cloud servers, including GitHub Actions runners on
+  Microsoft Azure. A VPN can have the same effect.
+
+To tell which, try the same code from a home or office connection in the US.
+`vignette("credentials-and-networks")` has more detail.
+
+### HTTP 500 with "The API said: No point found for address"
+
+The API doesn't recognize the ZIP code. The package checks that a ZIP code
+has five digits, but it can't know which ZIP codes exist. Check the number,
+or use `cdc_address_place()` to look one up from a city and state.
+
+### Other HTTP 500 errors
+
+The API uses status 500 both for its own problems and for requests it
+considers invalid. The text after "The API said:" usually says which, for
+example "radius must be 50 or less". The package checks its arguments before
+sending, so these should be rare. If one says something about your input that
+the package let through, please report it.
+
+### HTTP 429 or 503
+
+The API is busy or briefly unavailable. The package waits and retries up to
+three times in total. If it still fails, wait a few minutes and try again.
+
+### Errors that mention a timeout or a failed connection
+
+The request didn't reach the API, or got no answer within 30 seconds. Check
+your internet connection; if it's working, the API may be down.
+
+## Errors about your arguments
+
+These come from the package, before anything is sent.
+
+| Message | Meaning |
+|---|---|
+| `` `zipcode` must be a string, such as "02110" `` | You passed a number. Numbers drop leading zeros, so ZIP codes must be strings. |
+| `` `zipcode` must be a five-digit ZIP code `` | The string isn't exactly five digits. ZIP+4 codes such as `"02110-1234"` aren't accepted; use the first five digits. |
+| `` `radius` must be a whole number `` | Use 1, 2, ... 50, not 2.5. |
+| `` `radius` must be between 1 and 50 miles `` | The API's limit is 50 miles. |
+| `` `latitude` must be between -90 and 90 `` | Check that latitude and longitude aren't swapped. |
+| `` `longitude` must be between -180 and 180 `` | Places in the US have negative longitudes. |
+| "Invalid CDC Locator service enum(s)" | A `services` value isn't one of the 14 names. The message lists them. |
+| `` `services` must name at least one service `` | You passed an empty vector. Use `services = NULL` for every service. |
+| "must be a single non-empty string" | `city` or `state` is missing, blank or has more than one value. |
+
+## Results that look wrong
+
+### No rows
+
+There may be no provider of that kind within the radius. Try a larger radius,
+up to 50 miles, or more services. A zero-row result still has all the
+columns, so code that uses them keeps working.
+
+### The same clinic appears several times
+
+A clinic that offers several services can have a separate record, with a
+different `id`, for each. `vignette("working-with-results")` shows how to keep
+one row per place.
+
+### Searching every service gives fewer results than expected
+
+Make sure you're on a version of the package that searches three services at
+a time. Asking the API for all 14 at once returns nothing. Any version with
+`vignette("services-and-searching")` does this.
+
+### A search is slow
+
+The default search makes five requests, spaced at least half a second apart,
+and each takes as long as the API needs to answer. Naming only the services
+you need makes fewer requests.
+
+### Results differ from the website
+
+The website at locator.hiv.gov shows some categories the API doesn't offer,
+such as tuberculosis testing, and may use newer listings. Listings also change
+over time, so results from different days can differ.
+
+## Reporting a problem
+
+If something here doesn't explain what you see, please open an issue at
+<https://github.com/VagishHemmige/CDCLocator/issues>. Include the function call,
+the full error message and the date. Never include your client ID or token:
+the package keeps them out of its messages, so a copied error is safe to share.

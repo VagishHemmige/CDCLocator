@@ -1,4 +1,32 @@
-url: ~
+url: https://vagishhemmige.github.io/CDCLocator/
 template:
   bootstrap: 5
 
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, github]
+
+reference:
+  - title: Find providers
+    desc: Search for service providers near a ZIP code and tidy the results.
+    contents:
+      - cdc_providers
+      - cdc_providers_tidy
+  - title: Find a ZIP code
+    desc: Translate a place or a point into a ZIP code to search from.
+    contents:
+      - cdc_address_place
+      - cdc_address_point
+  - title: Credentials
+    contents:
+      - cdc_locator_set_credentials
+
+articles:
+  - title: Using CDCLocator
+    navbar: ~
+    contents:
+      - credentials-and-networks
+      - services-and-searching
+      - working-with-results
+      - troubleshooting

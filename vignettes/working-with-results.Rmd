@@ -1,0 +1,144 @@
+---
+title: "Working with results"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Working with results}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+# Code runs only when the article is built with credentials and
+# CDC_LOCATOR_LIVE_TESTS=true, so building the package never calls the API.
+live <- identical(Sys.getenv("CDC_LOCATOR_LIVE_TESTS"), "true") &&
+  nzchar(Sys.getenv("CDC_LOCATOR_CLIENT_ID")) &&
+  nzchar(Sys.getenv("CDC_LOCATOR_CLIENT_TOKEN"))
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = live)
+```
+
+```{r setup}
+library(CDCLocator)
+providers <- cdc_providers("20176", radius = 10)
+tidy <- cdc_providers_tidy(providers)
+```
+
+This article describes what `cdc_providers()` and `cdc_providers_tidy()`
+return, and how to sort, de-duplicate, map and save the results.
+
+## What `cdc_providers()` returns
+
+A tibble with one row per provider record and three columns:
+
+| Column | Contents |
+|---|---|
+| `type` | The record type, such as `"provider"` |
+| `id` | The API's identifier for the record |
+| `attributes` | Everything else, nested: name, address, contact details, languages, coordinates and distance |
+
+The nested form keeps exactly what the API sent. For most work, pass it to
+`cdc_providers_tidy()`.
+
+When nothing matches, the result has these three columns and zero rows.
+
+## What `cdc_providers_tidy()` returns
+
+One row per provider record, with these columns:
+
+| Column | Contents |
+|---|---|
+| `provider_type` | The record type (from `type`) |
+| `provider_id` | The API's identifier (from `id`) |
+| `name` | The provider's name |
+| `street`, `city`, `state`, `zipcode`, `country` | The address. `state` may be a postal code or a full name, as the provider entered it |
+| `categories` | Present in the API's records, but empty in every record seen so far |
+| `contact_telephone` | Phone number, as entered: formats vary |
+| `contact_website` | Website; may be empty |
+| `contact_others` | Other contact details; empty so far |
+| `languages` | A list column: each entry is a character vector of the languages offered, such as `c("English", "Spanish")` |
+| `latitude`, `longitude` | The provider's location |
+| `distance` | Miles from the searched ZIP code's location |
+
+When nothing matches, the result has all these columns and zero rows, so code
+that uses them still runs.
+
+```{r}
+names(tidy)
+```
+
+## Sorting and filtering
+
+The results are ordinary tibbles, so base R or dplyr both work:
+
+```{r}
+nearest <- tidy[order(tidy$distance), c("name", "street", "city", "distance")]
+head(nearest)
+
+spanish <- tidy[vapply(tidy$languages, \(x) "Spanish" %in% x, logical(1)), ]
+nrow(spanish)
+```
+
+## One row per place
+
+As explained in `vignette("services-and-searching")`, a clinic that offers
+several services can appear once per service, each time with a different
+`provider_id`. To keep one row per place, de-duplicate on name and address:
+
+```{r}
+place_key <- paste(
+  tolower(tidy$name),
+  tolower(tidy$street),
+  tidy$zipcode
+)
+places <- tidy[!duplicated(place_key), ]
+nrow(tidy)
+nrow(places)
+```
+
+Names and addresses are entered by providers, so small differences in
+spelling or punctuation will keep two rows apart. Check the result if exact
+counts matter.
+
+## Saving to a file
+
+A CSV file can't hold a list column, so flatten `languages` first:
+
+```{r, eval = FALSE}
+to_save <- tidy
+to_save$languages <- vapply(
+  to_save$languages,
+  \(x) paste(x, collapse = "; "),
+  character(1)
+)
+write.csv(to_save, "providers.csv", row.names = FALSE)
+```
+
+Saving as an R data file keeps the list column as it is:
+
+```{r, eval = FALSE}
+saveRDS(tidy, "providers.rds")
+```
+
+## Mapping
+
+`latitude` and `longitude` are ordinary numbers, so any mapping package can
+use them. For example, with the sf and leaflet packages, which CDCLocator
+doesn't need and doesn't install for you:
+
+```r
+providers_sf <- sf::st_as_sf(
+  tidy,
+  coords = c("longitude", "latitude"),
+  crs = 4326
+)
+
+leaflet::leaflet(providers_sf) |>
+  leaflet::addTiles() |>
+  leaflet::addMarkers(popup = ~name)
+```
+
+## Keeping track of when you searched
+
+The API's listings change as providers open, close and update their details.
+If results feed into a report or analysis, record the date of the search and
+the arguments you used, and save the results rather than re-running the
+search later and expecting the same answer.
