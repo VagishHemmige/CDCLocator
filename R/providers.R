@@ -13,8 +13,10 @@
 #' results are combined: the default, every service, takes five requests.
 #' Providers returned by more than one request are kept once, by `id`.
 #'
-#' @param zipcode Character scalar. ZIP code.
-#' @param radius Integer search radius in miles (1–50, default: 10).
+#' @param zipcode A five-digit ZIP code as a string, such as `"02110"`.
+#'   A number would lose leading zeros, so it is rejected.
+#' @param radius Search radius in miles: a whole number from 1 to 50. The
+#'   default is 10.
 #' @param services Character vector of services to search for, matched in
 #'   any case: `"hivtesting"`, `"stdtesting"`, `"selftesting"`,
 #'   `"preptesting"`, `"pep"`, `"condom"`, `"hepc"`, `"doxypep"`,
@@ -34,19 +36,17 @@ cdc_providers <- function(
   client_token = NULL
 ) {
   # ---- argument validation ------------------------------------------------
-  if (!is.character(zipcode) || length(zipcode) != 1 || !nzchar(zipcode)) {
-    cli::cli_abort("{.arg zipcode} must be a non-empty character scalar.")
-  }
-
-  if (!is.numeric(radius) || length(radius) != 1) {
-    cli::cli_abort("{.arg radius} must be a single numeric value.")
-  }
-
+  .check_zipcode(zipcode, "zipcode", environment())
+  .check_number(
+    radius,
+    "radius",
+    min = 1,
+    max = 50,
+    whole = TRUE,
+    unit = " miles",
+    call = environment()
+  )
   radius <- as.integer(radius)
-
-  if (radius < 1 || radius > 50) {
-    cli::cli_abort("{.arg radius} must be between 1 and 50 miles.")
-  }
 
   services <- .validate_cdc_locator_services(services)
 

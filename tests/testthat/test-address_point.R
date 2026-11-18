@@ -20,3 +20,15 @@ test_that("cdc_address_point() sends coordinates and returns one row", {
   expect_equal(query, list(latitude = "42.35", longitude = "-71.05"))
   expect_equal(out$zipcode, "02110")
 })
+
+test_that("cdc_address_point() rejects missing or out-of-range coordinates", {
+  local_fake_credentials()
+  mock <- local_mock_locator(json_response(list()))
+
+  expect_snapshot(cdc_address_point(NA_real_, -71), error = TRUE)
+  expect_snapshot(cdc_address_point(42, NA_real_), error = TRUE)
+  expect_snapshot(cdc_address_point(91, -71), error = TRUE)
+  expect_snapshot(cdc_address_point(42, -181), error = TRUE)
+  expect_snapshot(cdc_address_point(Inf, -71), error = TRUE)
+  expect_length(mock$reqs, 0)
+})
