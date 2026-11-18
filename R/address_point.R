@@ -7,32 +7,35 @@
 #' Uses the CDC Locator API Point Translator endpoint to convert geographic
 #' coordinates into a ZIP code.
 #'
-#' @param latitude Numeric latitude.
-#' @param longitude Numeric longitude.
+#' @param latitude Latitude in decimal degrees, from -90 to 90.
+#' @param longitude Longitude in decimal degrees, from -180 to 180. Places in
+#'   the US have negative longitudes.
 #' @param client_id Optional CDC client ID override.
 #' @param client_token Optional CDC client token override.
 #'
 #' @return A tibble with city, state, zipcode, latitude, and longitude.
 #' @export
-cdc_address_point <- function(latitude,
-                              longitude,
-                              client_id = NULL,
-                              client_token = NULL) {
-
+cdc_address_point <- function(
+  latitude,
+  longitude,
+  client_id = NULL,
+  client_token = NULL
+) {
   # ---- argument validation ------------------------------------------------
-  if (!is.numeric(latitude) || length(latitude) != 1) {
-    cli::cli_abort("{.arg latitude} must be a single numeric value.")
-  }
-
-  if (!is.numeric(longitude) || length(longitude) != 1) {
-    cli::cli_abort("{.arg longitude} must be a single numeric value.")
-  }
+  .check_number(latitude, "latitude", min = -90, max = 90, call = environment())
+  .check_number(
+    longitude,
+    "longitude",
+    min = -180,
+    max = 180,
+    call = environment()
+  )
 
   # ---- build + perform request --------------------------------------------
   req <- .cdc_locator_request(
     endpoint = "address/point",
     query = list(
-      latitude  = latitude,
+      latitude = latitude,
       longitude = longitude
     ),
     client_id = client_id,
@@ -43,10 +46,10 @@ cdc_address_point <- function(latitude,
 
   # ---- normalize response -------------------------------------------------
   tibble::tibble(
-    city      = body$city,
-    state     = body$state,
-    zipcode   = body$zipcode,
-    latitude  = body$point$latitude,
+    city = body$city,
+    state = body$state,
+    zipcode = body$zipcode,
+    latitude = body$point$latitude,
     longitude = body$point$longitude
   )
 }

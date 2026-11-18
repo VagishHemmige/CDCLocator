@@ -191,3 +191,39 @@ test_that("cdc_providers() errors name the function, not an internal helper", {
   expect_s3_class(err, "httr2_http_500")
   expect_equal(as.character(err$call[[1]]), "cdc_providers")
 })
+
+test_that("cdc_providers() rejects missing, short or long ZIP codes before any request", {
+  local_fake_credentials()
+  mock <- local_mock_locator(json_response(list()))
+
+  expect_snapshot(cdc_providers(NA_character_), error = TRUE)
+  expect_snapshot(cdc_providers("2110"), error = TRUE)
+  expect_snapshot(cdc_providers("021101"), error = TRUE)
+  expect_snapshot(cdc_providers("02110-1234"), error = TRUE)
+  expect_snapshot(cdc_providers(c("02110", "20176")), error = TRUE)
+  expect_length(mock$reqs, 0)
+})
+
+test_that("cdc_providers() explains that a numeric ZIP code loses leading zeros", {
+  local_fake_credentials()
+  expect_snapshot(cdc_providers(2110), error = TRUE)
+})
+
+test_that("cdc_providers() rejects a missing or fractional radius", {
+  local_fake_credentials()
+  mock <- local_mock_locator(json_response(list()))
+
+  expect_snapshot(cdc_providers("02110", radius = NA_real_), error = TRUE)
+  expect_snapshot(cdc_providers("02110", radius = 10.5), error = TRUE)
+  expect_snapshot(cdc_providers("02110", radius = Inf), error = TRUE)
+  expect_snapshot(cdc_providers("02110", radius = 0), error = TRUE)
+  expect_length(mock$reqs, 0)
+})
+
+test_that("cdc_providers() accepts a whole-number radius given as a double", {
+  local_fake_credentials()
+  mock <- local_mock_locator(json_response(list()))
+  cdc_providers("02110", radius = 25, services = "hivtesting")
+
+  expect_equal(httr2::url_parse(mock$req$url)$query$radius, "25")
+})

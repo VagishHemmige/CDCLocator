@@ -7,9 +7,10 @@
 cdc_address_place(city, state, client_id = NULL, client_token = NULL)
 }
 \arguments{
-\item{city}{Character scalar. City name.}
+\item{city}{City name, a single string.}
 
-\item{state}{Character scalar. State name or postal abbreviation.}
+\item{state}{State, a single string: the postal abbreviation (\code{"IL"}) or
+the full name.}
 
 \item{client_id}{Optional CDC client ID override.}
 

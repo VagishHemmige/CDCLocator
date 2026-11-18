@@ -13,9 +13,11 @@ cdc_providers(
 )
 }
 \arguments{
-\item{zipcode}{Character scalar. ZIP code.}
+\item{zipcode}{A five-digit ZIP code as a string, such as \code{"02110"}.
+A number would lose leading zeros, so it is rejected.}
 
-\item{radius}{Integer search radius in miles (1–50, default: 10).}
+\item{radius}{Search radius in miles: a whole number from 1 to 50. The
+default is 10.}
 
 \item{services}{Character vector of services to search for, matched in
 any case: \code{"hivtesting"}, \code{"stdtesting"}, \code{"selftesting"},

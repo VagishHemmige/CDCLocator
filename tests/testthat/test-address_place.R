@@ -39,3 +39,14 @@ test_that("cdc_address_place() errors name the function, not httr2", {
   expect_equal(as.character(err$call[[1]]), "cdc_address_place")
   expect_match(conditionMessage(err), "city is not provided", fixed = TRUE)
 })
+
+test_that("cdc_address_place() rejects missing or blank city and state", {
+  local_fake_credentials()
+  mock <- local_mock_locator(json_response(list()))
+
+  expect_snapshot(cdc_address_place(NA_character_, "MA"), error = TRUE)
+  expect_snapshot(cdc_address_place("Boston", NA_character_), error = TRUE)
+  expect_snapshot(cdc_address_place("   ", "MA"), error = TRUE)
+  expect_snapshot(cdc_address_place(c("Boston", "Quincy"), "MA"), error = TRUE)
+  expect_length(mock$reqs, 0)
+})
