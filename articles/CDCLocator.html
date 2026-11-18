@@ -112,7 +112,7 @@ the API and returns the answers as tibbles.</p>
 </tbody>
 </table>
 <p>A fifth, <code><a href="../reference/cdc_locator_set_credentials.html">cdc_locator_set_credentials()</a></code>, sets your
-credentials for one session.</p>
+credentials for the session and can save them for later ones.</p>
 </div>
 <div class="section level2">
 <h2 id="step-1-credentials">Step 1: credentials<a class="anchor" aria-label="anchor" href="#step-1-credentials"></a>
@@ -121,14 +121,21 @@ credentials for one session.</p>
 request: the <a href="https://www.hiv.gov/locator" class="external-link">Locator page on
 HIV.gov</a> says how to ask, and in November 2026 it pointed to <a href="mailto:contact@hiv.gov" class="email">contact@hiv.gov</a>.</p>
 <p>The best place to keep them is your <code>.Renviron</code> file,
-which R reads when it starts. Open it with
-<code><a href="https://usethis.r-lib.org/reference/edit.html" class="external-link">usethis::edit_r_environ()</a></code>, add these two lines with your
-own values, save, and restart R:</p>
+which R reads when it starts. The package can save them there for you,
+after asking:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/cdc_locator_set_credentials.html">cdc_locator_set_credentials</a></span><span class="op">(</span></span>
+<span>  client_id <span class="op">=</span> <span class="st">"your-client-id"</span>,</span>
+<span>  client_token <span class="op">=</span> <span class="st">"your-client-token"</span>,</span>
+<span>  install <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Or open the file with <code><a href="https://usethis.r-lib.org/reference/edit.html" class="external-link">usethis::edit_r_environ()</a></code>, add
+these two lines with your own values, save, and restart R:</p>
 <pre><code><span><span class="va">CDC_LOCATOR_CLIENT_ID</span><span class="op">=</span><span class="va">your</span><span class="op">-</span><span class="va">client</span><span class="op">-</span><span class="va">id</span></span>
 <span><span class="va">CDC_LOCATOR_CLIENT_TOKEN</span><span class="op">=</span><span class="va">your</span><span class="op">-</span><span class="va">client</span><span class="op">-</span><span class="va">token</span></span></code></pre>
 <p>Check that R can see them. This prints <code>TRUE TRUE</code> without
 showing the values:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/nchar.html" class="external-link">nzchar</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"CDC_LOCATOR_CLIENT_ID"</span>, <span class="st">"CDC_LOCATOR_CLIENT_TOKEN"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><code><a href="../articles/credentials-and-networks.html">vignette("credentials-and-networks")</a></code> covers other ways
 to supply them, how to keep the token safe, and which networks the API
@@ -137,7 +144,7 @@ accepts.</p>
 <div class="section level2">
 <h2 id="step-2-find-providers-near-a-zip-code">Step 2: find providers near a ZIP code<a class="anchor" aria-label="anchor" href="#step-2-find-providers-near-a-zip-code"></a>
 </h2>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/VagishHemmige/CDCLocator" class="external-link">CDCLocator</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">providers</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cdc_providers.html">cdc_providers</a></span><span class="op">(</span><span class="st">"20176"</span>, radius <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
@@ -166,7 +173,7 @@ holds the details in nested form.</p>
 </h2>
 <p><code><a href="../reference/cdc_providers_tidy.html">cdc_providers_tidy()</a></code> unpacks the details into ordinary
 columns:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tidy</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cdc_providers_tidy.html">cdc_providers_tidy</a></span><span class="op">(</span><span class="va">providers</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">tidy</span><span class="op">)</span></span>
 <span><span class="va">tidy</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"name"</span>, <span class="st">"street"</span>, <span class="st">"city"</span>, <span class="st">"zipcode"</span>, <span class="st">"contact_telephone"</span>, <span class="st">"distance"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
@@ -179,7 +186,7 @@ column and shows how to sort, map and save the table.</p>
 <h2 id="step-4-choose-services">Step 4: choose services<a class="anchor" aria-label="anchor" href="#step-4-choose-services"></a>
 </h2>
 <p>To search for particular services, name them:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">testing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cdc_providers.html">cdc_providers</a></span><span class="op">(</span></span>
 <span>  <span class="st">"20176"</span>,</span>
 <span>  radius <span class="op">=</span> <span class="fl">10</span>,</span>
@@ -196,14 +203,14 @@ services you name. The 14 service names, and what each covers, are in
 </h2>
 <p>The provider search only takes a ZIP code. If you have a city and
 state, or a latitude and longitude, look up the ZIP code first:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">peoria</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cdc_address_place.html">cdc_address_place</a></span><span class="op">(</span><span class="st">"Peoria"</span>, <span class="st">"IL"</span><span class="op">)</span></span>
 <span><span class="va">peoria</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/cdc_address_point.html">cdc_address_point</a></span><span class="op">(</span><span class="fl">40.69365</span>, <span class="op">-</span><span class="fl">89.58899</span><span class="op">)</span></span></code></pre></div>
 <p>Each returns one row with the city, the full state name, the ZIP code
 and its coordinates. Pass the ZIP code on:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cdc_providers.html">cdc_providers</a></span><span class="op">(</span><span class="va">peoria</span><span class="op">$</span><span class="va">zipcode</span>, radius <span class="op">=</span> <span class="fl">10</span>, services <span class="op">=</span> <span class="st">"hivtesting"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/cdc_providers_tidy.html">cdc_providers_tidy</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>

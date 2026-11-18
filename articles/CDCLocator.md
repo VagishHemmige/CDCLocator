@@ -27,7 +27,7 @@ There are four functions you will use:
 
 A fifth,
 [`cdc_locator_set_credentials()`](https://vagishhemmige.github.io/CDCLocator/reference/cdc_locator_set_credentials.md),
-sets your credentials for one session.
+sets your credentials for the session and can save them for later ones.
 
 ## Step 1: credentials
 
@@ -36,7 +36,18 @@ request: the [Locator page on HIV.gov](https://www.hiv.gov/locator) says
 how to ask, and in November 2026 it pointed to <contact@hiv.gov>.
 
 The best place to keep them is your `.Renviron` file, which R reads when
-it starts. Open it with
+it starts. The package can save them there for you, after asking:
+
+``` r
+
+cdc_locator_set_credentials(
+  client_id = "your-client-id",
+  client_token = "your-client-token",
+  install = TRUE
+)
+```
+
+Or open the file with
 [`usethis::edit_r_environ()`](https://usethis.r-lib.org/reference/edit.html),
 add these two lines with your own values, save, and restart R:
 

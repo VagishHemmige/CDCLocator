@@ -21,4 +21,4 @@ Translate a place or a point into a ZIP code to search from.
 ## Credentials
 
 - [`cdc_locator_set_credentials()`](https://vagishhemmige.github.io/CDCLocator/reference/cdc_locator_set_credentials.md)
-  : Set CDC Locator API credentials for this session
+  : Set CDC Locator API credentials

@@ -100,6 +100,31 @@ set them.</p>
 multi-value argument. The message names the argument but never shows its
 value.</p>
 </div>
+<div class="section level3">
+<h3 id="install-true-needs-an-interactive-session">“<code>install = TRUE</code> needs an interactive session”<a class="anchor" aria-label="anchor" href="#install-true-needs-an-interactive-session"></a>
+</h3>
+<p>Saving to <code>.Renviron</code> asks for confirmation, so it can’t
+run from a script run with <code>Rscript</code>, in a scheduled job or
+while knitting. Run it once at the console instead. Nothing was set or
+saved.</p>
+</div>
+<div class="section level3">
+<h3 id="has-characters-that-cant-be-saved-safely-in--renviron">“has characters that can’t be saved safely in .Renviron”<a class="anchor" aria-label="anchor" href="#has-characters-that-cant-be-saved-safely-in--renviron"></a>
+</h3>
+<p><code>.Renviron</code> treats spaces, quotes, <code>#</code> and
+<code>$</code> specially, so <code>install = TRUE</code> only saves
+plain values. Use <code>install = FALSE</code> for this session, and add
+the line to <code>.Renviron</code> yourself with the value in quotes.
+Nothing was set or saved.</p>
+</div>
+<div class="section level3">
+<h3 id="a-warning-that-this-folder-has-its-own--renviron">A warning that “this folder has its own .Renviron”<a class="anchor" aria-label="anchor" href="#a-warning-that-this-folder-has-its-own--renviron"></a>
+</h3>
+<p>The credentials were saved to your home <code>.Renviron</code>, but
+the folder R is running in has its own <code>.Renviron</code>. R reads
+that file instead when it starts here, so add the two lines to it as
+well, or remove it.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="http-errors-from-the-api">HTTP errors from the API<a class="anchor" aria-label="anchor" href="#http-errors-from-the-api"></a>
