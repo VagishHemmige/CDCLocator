@@ -16,7 +16,7 @@
       cdc_locator_set_credentials("fake-client-id", "fake-client-token")
     Message
       v Locator API credentials set for this R session.
-      i To keep them, add `CDC_LOCATOR_CLIENT_ID` and `CDC_LOCATOR_CLIENT_TOKEN` to your '.Renviron' (for example with `usethis::edit_r_environ()`), then restart R.
+      i To keep them for future sessions, run this again with `install = TRUE`, or add `CDC_LOCATOR_CLIENT_ID` and `CDC_LOCATOR_CLIENT_TOKEN` to your '.Renviron' yourself and restart R.
 
 # cdc_locator_set_credentials() rejects missing or malformed values
 
@@ -49,4 +49,61 @@
     Condition
       Error in `cdc_locator_set_credentials()`:
       ! `client_token` is missing.
+
+# install = TRUE needs an interactive session and changes nothing without one
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake-client-token", install = TRUE)
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! `install = TRUE` needs an interactive session, so you can confirm it.
+      i Nothing was set or saved.
+
+# install = TRUE asks first and writes nothing if the answer is no
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake-client-token", install = TRUE)
+    Message
+      v Locator API credentials set for this R session.
+      i Not saved to '<home>/.Renviron'.
+
+# install = TRUE refuses values .Renviron can't hold, before writing
+
+    Code
+      cdc_locator_set_credentials("fake id", "fake-client-token", install = TRUE)
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! `client_id` has characters that can't be saved safely in '.Renviron'.
+      i Only letters, digits and `. _ ~ + / = : -` can be saved this way.
+      i Use `install = FALSE` and add it to '.Renviron' yourself, in quotes.
+      i Nothing was set or saved.
+
+---
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake\ntoken", install = TRUE)
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! `client_token` has characters that can't be saved safely in '.Renviron'.
+      i Only letters, digits and `. _ ~ + / = : -` can be saved this way.
+      i Use `install = FALSE` and add it to '.Renviron' yourself, in quotes.
+      i Nothing was set or saved.
+
+# install must be TRUE or FALSE
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake-client-token", install = "yes")
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! `install` must be `TRUE` or `FALSE`.
+
+# install = TRUE saves nothing if the file can't be protected
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake-client-token", install = TRUE)
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! Couldn't make a file in '<home>' readable only by you.
+      i The credentials are set for this session, but nothing was saved.
+      i Add them to '<home>/.Renviron' yourself, and make it readable only by you.
 
