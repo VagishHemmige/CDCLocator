@@ -1,7 +1,3 @@
-# Requests are paced half a second apart in normal use; not in tests, except
-# the test of the pacing itself.
-options(cdclocator.min_gap = 0)
-
 # Sets obviously fake credentials for the calling test. Never use real ones.
 local_fake_credentials <- function(env = parent.frame()) {
   withr::local_envvar(
@@ -32,6 +28,9 @@ raw_json_response <- function(text, status = 200L) {
 # Mocks every request in the calling test with `response` and returns an
 # environment whose `req` holds the last request made.
 local_mock_locator <- function(response, env = parent.frame()) {
+  # Mocked requests need no pacing; the option is restored when the test ends.
+  # Live tests don't use this helper, so they keep the real pacing.
+  withr::local_options(cdclocator.min_gap = 0, .local_envir = env)
   seen <- new.env()
   httr2::local_mocked_responses(
     function(req) {

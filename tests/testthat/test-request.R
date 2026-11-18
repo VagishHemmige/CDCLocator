@@ -53,9 +53,9 @@ test_that(".cdc_locator_request() sets a user agent and retries", {
 })
 
 test_that("requests are sent at least half a second apart", {
-  withr::local_options(cdclocator.min_gap = 0.5)
   local_fake_credentials()
   local_mock_locator(json_response(list()))
+  withr::local_options(cdclocator.min_gap = 0.5)
   req <- .cdc_locator_request("providers")
 
   .perform_cdc_locator_request(req)
@@ -66,6 +66,59 @@ test_that("requests are sent at least half a second apart", {
   elapsed <- as.numeric(difftime(Sys.time(), start, units = "secs"))
 
   expect_gte(elapsed, 1.95)
+})
+
+test_that("retries and the next call are also paced", {
+  skip_on_cran()
+  skip_if_not_installed("webfakes")
+  local_fake_credentials()
+  withr::local_options(cdclocator.min_gap = 0.5)
+
+  # The first request gets a 503 asking for an immediate retry; the rest
+  # succeed. The server records when each request arrives.
+  app <- webfakes::new_app()
+  app$locals$arrivals <- numeric()
+  app$get("/providers", function(req, res) {
+    req$app$locals$arrivals <- c(
+      req$app$locals$arrivals,
+      as.numeric(Sys.time())
+    )
+    if (length(req$app$locals$arrivals) == 1) {
+      res$set_status(503L)$set_header("Retry-After", "0")$send_json(list())
+    } else {
+      res$send_json(list())
+    }
+  })
+  app$get("/arrivals", function(req, res) {
+    res$send_json(
+      as.list(req$app$locals$arrivals),
+      auto_unbox = TRUE,
+      digits = NA
+    )
+  })
+  server <- webfakes::local_app_process(app)
+
+  req <- .cdc_locator_request("providers") |>
+    httr2::req_url(server$url("/providers"))
+  .perform_cdc_locator_request(req)
+  .perform_cdc_locator_request(req)
+
+  arrivals <- unlist(httr2::resp_body_json(httr2::req_perform(
+    httr2::request(server$url("/arrivals"))
+  )))
+  expect_length(arrivals, 3)
+  expect_gte(min(diff(arrivals)), 0.45)
+})
+
+test_that("mocked tests turn pacing off only while they run", {
+  withr::local_options(cdclocator.min_gap = NULL)
+  in_mocked_test <- function() {
+    local_mock_locator(json_response(list()))
+    getOption("cdclocator.min_gap")
+  }
+
+  expect_equal(in_mocked_test(), 0)
+  expect_null(getOption("cdclocator.min_gap"))
 })
 
 test_that("API error text is shown, without credentials", {

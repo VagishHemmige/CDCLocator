@@ -41,7 +41,12 @@
     httr2::req_user_agent(.cdc_locator_user_agent()) |>
     httr2::req_timeout(30) |>
     # 429 and 503 only; the API reports bad input as 500, which must not retry.
-    httr2::req_retry(max_tries = 3) |>
+    # Retries keep the same minimum gap as separate calls.
+    httr2::req_retry(
+      max_tries = 3,
+      backoff = .cdc_locator_backoff,
+      after = .cdc_locator_retry_after
+    ) |>
     httr2::req_error(body = \(resp) .cdc_locator_error_body(resp, auth))
 }
 
@@ -85,7 +90,26 @@
   c(message, hint)
 }
 
-# When the last request was sent, shared by all calls in the session.
+# The minimum time between requests, in seconds.
+.cdc_locator_min_gap <- function() {
+  getOption("cdclocator.min_gap", 0.5)
+}
+
+# Seconds before a retry when the server gives no Retry-After: httr2's
+# default exponential backoff, but never less than the minimum gap.
+.cdc_locator_backoff <- function(i) {
+  max(.cdc_locator_min_gap(), round(min(stats::runif(1, 1, 2^i), 60), 1))
+}
+
+# Seconds before a retry when the server gives Retry-After: what it asks
+# for, but never less than the minimum gap. NA falls back to the backoff.
+.cdc_locator_retry_after <- function(resp) {
+  after <- httr2::resp_retry_after(resp)
+  if (is.na(after)) NA else max(after, .cdc_locator_min_gap())
+}
+
+# When the last request was sent or finished, shared by all calls in the
+# session.
 .cdc_locator_state <- new.env(parent = emptyenv())
 
 # Waits until at least `min_gap` seconds have passed since the previous
@@ -93,7 +117,7 @@
 # to about two per second. Done here rather than with httr2::req_throttle(),
 # whose token bucket (httr2 >= 1.1) allows short bursts. Tests set the
 # `cdclocator.min_gap` option to 0 to run quickly.
-.cdc_locator_wait <- function(min_gap = getOption("cdclocator.min_gap", 0.5)) {
+.cdc_locator_wait <- function(min_gap = .cdc_locator_min_gap()) {
   last <- .cdc_locator_state$last
   if (!is.null(last)) {
     wait <- min_gap - as.numeric(difftime(Sys.time(), last, units = "secs"))
@@ -160,6 +184,9 @@
 #' @noRd
 .perform_cdc_locator_request <- function(req, call = parent.frame()) {
   .cdc_locator_wait()
+  # Retries happen inside req_perform(), so time the next call from when this
+  # one finished, whether it succeeded or failed.
+  on.exit(.cdc_locator_state$last <- Sys.time(), add = TRUE)
   resp <- httr2::req_perform(req, error_call = call)
 
   httr2::resp_body_json(resp, simplifyVector = TRUE)
