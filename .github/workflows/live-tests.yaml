@@ -7,6 +7,14 @@
 #
 # Run them when request building, response parsing or tidying changes.
 #
+# The maintainer's machine is the usual place for live tests. A run here
+# reaches the API only from some networks: on 2026-11-16, runners on AWS
+# us-east-1 worked and runners on Azure (eastus2, centralus) got HTTP 403 on
+# every request. GitHub chooses the runner. The job log's "Set up job" step
+# shows it under "Runner Image Provisioner" (Region and Cloud). A 403 here is
+# not evidence of a package bug or a bad key by itself: compare the same
+# revision on the maintainer's machine. See AGENTS.md.
+#
 # Needs the CDC_LOCATOR_CLIENT_ID and CDC_LOCATOR_CLIENT_TOKEN repository
 # secrets. GitHub does not pass secrets to pull requests from forks, so this
 # works only for branches in this repository. The secret values are never
@@ -56,6 +64,7 @@ jobs:
           needs: check
 
       - name: Run live tests
+        id: live
         run: |
           res <- as.data.frame(testthat::test_local(
             filter = "live",
@@ -70,3 +79,8 @@ jobs:
             stop("Live tests skipped: ", paste(unique(res$test[res$skipped]), collapse = "; "))
           }
         shell: Rscript {0}
+
+      - name: Explain a failed run
+        if: failure() && steps.live.conclusion == 'failure'
+        run: |
+          echo "::notice title=Live tests failed::If the errors are HTTP 403, check this runner's Region and Cloud under 'Set up job' > 'Runner Image Provisioner'. Azure runners were refused by the API on 2026-11-16. Re-run the same revision on the maintainer's machine before treating it as a package defect."
