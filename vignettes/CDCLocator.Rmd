@@ -39,8 +39,8 @@ There are four functions you will use:
 | `cdc_address_place()` | Finds the ZIP code for a city and state |
 | `cdc_address_point()` | Finds the ZIP code for a latitude and longitude |
 
-A fifth, `cdc_locator_set_credentials()`, sets your credentials for one
-session.
+A fifth, `cdc_locator_set_credentials()`, sets your credentials for the
+session and can save them for later ones.
 
 ## Step 1: credentials
 
@@ -49,8 +49,18 @@ the [Locator page on HIV.gov](https://www.hiv.gov/locator) says how to ask, and
 in November 2026 it pointed to contact@hiv.gov.
 
 The best place to keep them is your `.Renviron` file, which R reads when it
-starts. Open it with `usethis::edit_r_environ()`, add these two lines with your
-own values, save, and restart R:
+starts. The package can save them there for you, after asking:
+
+```{r, eval = FALSE}
+cdc_locator_set_credentials(
+  client_id = "your-client-id",
+  client_token = "your-client-token",
+  install = TRUE
+)
+```
+
+Or open the file with `usethis::edit_r_environ()`, add these two lines with
+your own values, save, and restart R:
 
 ```
 CDC_LOCATOR_CLIENT_ID=your-client-id
