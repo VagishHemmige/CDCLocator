@@ -7,9 +7,10 @@
 cdc_address_point(latitude, longitude, client_id = NULL, client_token = NULL)
 }
 \arguments{
-\item{latitude}{Numeric latitude.}
+\item{latitude}{Latitude in decimal degrees, from -90 to 90.}
 
-\item{longitude}{Numeric longitude.}
+\item{longitude}{Longitude in decimal degrees, from -180 to 180. Places in
+the US have negative longitudes.}
 
 \item{client_id}{Optional CDC client ID override.}
 
