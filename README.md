@@ -51,9 +51,20 @@ issues on request. The [Locator page on
 HIV.gov](https://www.hiv.gov/locator) says how to ask; in November 2026
 it pointed to <contact@hiv.gov>.
 
-Once you have them, store them in your `.Renviron` file so R finds them
-each time it starts. `usethis::edit_r_environ()` opens it. Add two
-lines, then restart R:
+Once you have them, save them in your `.Renviron` file so R finds them
+each time it starts. The package can do this for you: it asks first,
+names the file, and writes only after you say yes.
+
+``` r
+CDCLocator::cdc_locator_set_credentials(
+  client_id = "your-client-id",
+  client_token = "your-client-token",
+  install = TRUE
+)
+```
+
+Or add them yourself: `usethis::edit_r_environ()` opens the file. Add
+these two lines, then restart R:
 
     CDC_LOCATOR_CLIENT_ID=your-client-id
     CDC_LOCATOR_CLIENT_TOKEN=your-client-token

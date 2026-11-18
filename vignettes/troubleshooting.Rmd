@@ -40,6 +40,25 @@ nzchar(Sys.getenv(c("CDC_LOCATOR_CLIENT_ID", "CDC_LOCATOR_CLIENT_TOKEN")))
 `cdc_locator_set_credentials()` got an empty, missing or multi-value argument.
 The message names the argument but never shows its value.
 
+### "`install = TRUE` needs an interactive session"
+
+Saving to `.Renviron` asks for confirmation, so it can't run from a script run
+with `Rscript`, in a scheduled job or while knitting. Run it once at the
+console instead. Nothing was set or saved.
+
+### "has characters that can't be saved safely in .Renviron"
+
+`.Renviron` treats spaces, quotes, `#` and `$` specially, so
+`install = TRUE` only saves plain values. Use `install = FALSE` for this
+session, and add the line to `.Renviron` yourself with the value in quotes.
+Nothing was set or saved.
+
+### A warning that "this folder has its own .Renviron"
+
+The credentials were saved to your home `.Renviron`, but the folder R is
+running in has its own `.Renviron`. R reads that file instead when it starts
+here, so add the two lines to it as well, or remove it.
+
 ## HTTP errors from the API
 
 These start with `HTTP` and a status code. When the API sent an explanation,
