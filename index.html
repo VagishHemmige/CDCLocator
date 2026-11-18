@@ -30,7 +30,17 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
+<li class="nav-item"><a class="nav-link" href="articles/CDCLocator.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
+<li><a class="dropdown-item" href="articles/credentials-and-networks.html">Credentials and networks</a></li>
+    <li><a class="dropdown-item" href="articles/services-and-searching.html">Services and searching</a></li>
+    <li><a class="dropdown-item" href="articles/working-with-results.html">Working with results</a></li>
+    <li><a class="dropdown-item" href="articles/troubleshooting.html">Troubleshooting</a></li>
+  </ul>
+</li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
@@ -49,36 +59,113 @@
 <div class="page-header"><h1 id="cdclocator">CDCLocator<a class="anchor" aria-label="anchor" href="#cdclocator"></a>
 </h1></div>
 <!-- badges: start -->
-<!-- badges: end -->
-<p>The goal of CDCLocator is to …</p>
+
+<p>CDCLocator finds HIV testing, prevention, care and related service providers near a US ZIP code, using the HIV.gov Locator API. It returns the results as tibbles you can filter, map or join to other data.</p>
+<p>It can:</p>
+<ul>
+<li>search for providers within 1 to 50 miles of a ZIP code, for any of 14 kinds of service, such as HIV testing, PrEP, Ryan White care or housing help;</li>
+<li>turn the nested provider records into one row per provider, with name, address, phone, website, languages, coordinates and distance;</li>
+<li>look up the ZIP code for a city and state, or for a latitude and longitude.</li>
+</ul>
+<p>CDCLocator is not affiliated with or endorsed by HIV.gov. It is in early development, and the API’s behavior described here was observed in November 2026.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>You can install the development version of CDCLocator from <a href="https://github.com/" class="external-link">GitHub</a> with:</p>
+<p>Install the development version from GitHub, building the guides so you can open them in R with <code><a href="https://rdrr.io/r/utils/vignette.html" class="external-link">vignette()</a></code>:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("devtools")</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"VagishHemmige/CDCLocator"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span></span>
+<span>  <span class="st">"VagishHemmige/CDCLocator"</span>,</span>
+<span>  dependencies <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  build_vignettes <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Building the guides needs Pandoc, which comes with RStudio. Without it, or to install faster, leave out <code>build_vignettes = TRUE</code>: the package works the same, and the guides are on the package website instead.</p>
+</div>
+<div class="section level2">
+<h2 id="before-you-start-api-credentials">Before you start: API credentials<a class="anchor" aria-label="anchor" href="#before-you-start-api-credentials"></a>
+</h2>
+<p>The Locator API needs a client ID and a client token, which HIV.gov issues on request. The <a href="https://www.hiv.gov/locator" class="external-link">Locator page on HIV.gov</a> says how to ask; in November 2026 it pointed to <a href="mailto:contact@hiv.gov" class="email">contact@hiv.gov</a>.</p>
+<p>Once you have them, store them in your <code>.Renviron</code> file so R finds them each time it starts. <code><a href="https://usethis.r-lib.org/reference/edit.html" class="external-link">usethis::edit_r_environ()</a></code> opens it. Add two lines, then restart R:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>CDC_LOCATOR_CLIENT_ID<span class="ot">=</span>your<span class="sc">-</span>client<span class="sc">-</span>id</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>CDC_LOCATOR_CLIENT_TOKEN<span class="ot">=</span>your<span class="sc">-</span>client<span class="sc">-</span>token</span></code></pre></div>
+<p>Treat the token like a password: keep it out of scripts, and never commit <code>.Renviron</code> to Git. <a href="https://vagishhemmige.github.io/CDCLocator/articles/credentials-and-networks.html">Credentials and networks</a> has more detail, including how a project’s own <code>.Renviron</code> affects this and what to do on a shared or cloud computer.</p>
 </div>
 <div class="section level2">
 <h2 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
 </h2>
-<p>This is a basic example which shows you how to solve a common problem:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co">## basic example code</span></span></code></pre></div>
-<p>What is special about using <code>README.Rmd</code> instead of just <code>README.md</code>? You can include R chunks like so:</p>
+<p>Find every kind of service within 5 miles of a ZIP code:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">cars</span><span class="op">)</span></span>
-<span><span class="co">#&gt;      speed           dist       </span></span>
-<span><span class="co">#&gt;  Min.   : 4.0   Min.   :  2.00  </span></span>
-<span><span class="co">#&gt;  1st Qu.:12.0   1st Qu.: 26.00  </span></span>
-<span><span class="co">#&gt;  Median :15.0   Median : 36.00  </span></span>
-<span><span class="co">#&gt;  Mean   :15.4   Mean   : 42.98  </span></span>
-<span><span class="co">#&gt;  3rd Qu.:19.0   3rd Qu.: 56.00  </span></span>
-<span><span class="co">#&gt;  Max.   :25.0   Max.   :120.00</span></span></code></pre></div>
-<p>You’ll still need to render <code>README.Rmd</code> regularly, to keep <code>README.md</code> up-to-date. <code>devtools::build_readme()</code> is handy for this.</p>
-<p>You can also embed plots, for example:</p>
-<p><img src="reference/figures/README-pressure-1.png" width="100%"></p>
-<p>In that case, don’t forget to commit and push the resulting figure files, so they display on GitHub and CRAN.</p>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/VagishHemmige/CDCLocator" class="external-link">CDCLocator</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">providers</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/cdc_providers.html">cdc_providers</a></span><span class="op">(</span><span class="st">"20176"</span>, radius <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="reference/cdc_providers.html">cdc_providers()</a></code> returns the API’s records with their details nested. To get one row per provider with plain columns, pass them to <code><a href="reference/cdc_providers_tidy.html">cdc_providers_tidy()</a></code>:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">tidy</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/cdc_providers_tidy.html">cdc_providers_tidy</a></span><span class="op">(</span><span class="va">providers</span><span class="op">)</span></span>
+<span><span class="va">tidy</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"name"</span>, <span class="st">"street"</span>, <span class="st">"city"</span>, <span class="st">"contact_telephone"</span>, <span class="st">"distance"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<p>Search for particular services only. The names are listed in <code><a href="reference/cdc_providers.html">?cdc_providers</a></code>:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">prep</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/cdc_providers.html">cdc_providers</a></span><span class="op">(</span><span class="st">"20176"</span>, radius <span class="op">=</span> <span class="fl">10</span>, services <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"preptesting"</span>, <span class="st">"pep"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>Start from a place or a point instead of a ZIP code:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/cdc_address_place.html">cdc_address_place</a></span><span class="op">(</span><span class="st">"Peoria"</span>, <span class="st">"IL"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/cdc_address_point.html">cdc_address_point</a></span><span class="op">(</span><span class="fl">40.69365</span>, <span class="op">-</span><span class="fl">89.58899</span><span class="op">)</span></span></code></pre></div>
+<p>Both return a one-row tibble with the ZIP code, which you can pass to <code><a href="reference/cdc_providers.html">cdc_providers()</a></code>.</p>
+</div>
+<div class="section level2">
+<h2 id="things-to-know">Things to know<a class="anchor" aria-label="anchor" href="#things-to-know"></a>
+</h2>
+<ul>
+<li>
+<strong>ZIP codes are strings.</strong> Write <code>"02110"</code>, not <code>02110</code>, or the leading zero is lost.</li>
+<li>
+<strong>Searching every service takes several requests.</strong> The API returns nothing when all 14 services are requested at once, so the package asks for three at a time and combines the results. The default search makes five requests, spaced half a second apart, so it takes a few seconds.</li>
+<li>
+<strong>The same clinic can appear more than once</strong> when it offers several services. See <a href="https://vagishhemmige.github.io/CDCLocator/articles/working-with-results.html">Working with results</a>.</li>
+<li>
+<strong>Some networks are refused.</strong> The API has refused requests from outside the US and from some cloud servers. If you get an HTTP 403 error, see <a href="https://vagishhemmige.github.io/CDCLocator/articles/troubleshooting.html">Troubleshooting</a>.</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="learn-more">Learn more<a class="anchor" aria-label="anchor" href="#learn-more"></a>
+</h2>
+<p>The guides are on the <a href="https://vagishhemmige.github.io/CDCLocator/">package website</a>. If you installed with <code>build_vignettes = TRUE</code>, they are also available in R with <code><a href="https://rdrr.io/r/utils/vignette.html" class="external-link">vignette()</a></code>:</p>
+<table class="table">
+<colgroup>
+<col width="82%">
+<col width="17%">
+</colgroup>
+<thead><tr>
+<th>Guide</th>
+<th>In R</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+<a href="https://vagishhemmige.github.io/CDCLocator/articles/CDCLocator.html">Getting started</a>: a first search, step by step</td>
+<td><code><a href="articles/CDCLocator.html">vignette("CDCLocator")</a></code></td>
+</tr>
+<tr>
+<td>
+<a href="https://vagishhemmige.github.io/CDCLocator/articles/credentials-and-networks.html">Credentials and networks</a>: getting and storing credentials, and where the API can be reached from</td>
+<td><code><a href="articles/credentials-and-networks.html">vignette("credentials-and-networks")</a></code></td>
+</tr>
+<tr>
+<td>
+<a href="https://vagishhemmige.github.io/CDCLocator/articles/services-and-searching.html">Services and searching</a>: the 14 services, the radius and how searches are made</td>
+<td><code><a href="articles/services-and-searching.html">vignette("services-and-searching")</a></code></td>
+</tr>
+<tr>
+<td>
+<a href="https://vagishhemmige.github.io/CDCLocator/articles/working-with-results.html">Working with results</a>: the columns, duplicates, mapping and saving</td>
+<td><code><a href="articles/working-with-results.html">vignette("working-with-results")</a></code></td>
+</tr>
+<tr>
+<td>
+<a href="https://vagishhemmige.github.io/CDCLocator/articles/troubleshooting.html">Troubleshooting</a>: what each error means and what to do</td>
+<td><code><a href="articles/troubleshooting.html">vignette("troubleshooting")</a></code></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
@@ -112,7 +199,12 @@
 </ul>
 </div>
 
-
+<div class="dev-status">
+<h2 data-toc-skip>Dev status</h2>
+<ul class="list-unstyled">
+<li><a href="https://github.com/VagishHemmige/CDCLocator/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/VagishHemmige/CDCLocator/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a></li>
+</ul>
+</div>
 
   </aside>
 </div>

@@ -15,7 +15,15 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/CDCLocator.html">Get started</a></li>
+<li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/credentials-and-networks.html">Credentials and networks</a></li>
+    <li><a class="dropdown-item" href="../articles/services-and-searching.html">Services and searching</a></li>
+    <li><a class="dropdown-item" href="../articles/working-with-results.html">Working with results</a></li>
+    <li><a class="dropdown-item" href="../articles/troubleshooting.html">Troubleshooting</a></li>
+  </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -32,9 +40,32 @@
     </div>
 
     <div class="section level2">
-      <h2 id="all-functions">All functions<a class="anchor" aria-label="anchor" href="#all-functions"></a></h2>
+      <h2 id="find-providers">Find providers<a class="anchor" aria-label="anchor" href="#find-providers"></a></h2>
+
+      <div class="section-desc"><p>Search for service providers near a ZIP code and tidy the results.</p></div>
+
+      <dl></dl></div><div class="section level2">
 
 
+
+
+      <dl><dt>
+
+          <code><a href="cdc_providers.html">cdc_providers()</a></code>
+
+        </dt>
+        <dd>Find CDC HIV-related service providers by ZIP code</dd>
+
+        <dt>
+
+          <code><a href="cdc_providers_tidy.html">cdc_providers_tidy()</a></code>
+
+        </dt>
+        <dd>Tidy CDC Locator provider output</dd>
+      </dl></div><div class="section level2">
+      <h2 id="find-a-zip-code">Find a ZIP code<a class="anchor" aria-label="anchor" href="#find-a-zip-code"></a></h2>
+
+      <div class="section-desc"><p>Translate a place or a point into a ZIP code to search from.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -54,29 +85,25 @@
 
         </dt>
         <dd>Translate latitude and longitude to a ZIP code</dd>
+      </dl></div><div class="section level2">
+      <h2 id="credentials">Credentials<a class="anchor" aria-label="anchor" href="#credentials"></a></h2>
 
-        <dt>
+
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
 
           <code><a href="cdc_locator_set_credentials.html">cdc_locator_set_credentials()</a></code>
 
         </dt>
         <dd>Set CDC Locator API credentials for this session</dd>
-
-        <dt>
-
-          <code><a href="cdc_providers.html">cdc_providers()</a></code>
-
-        </dt>
-        <dd>Find CDC HIV-related service providers by ZIP code</dd>
-
-        <dt>
-
-          <code><a href="cdc_providers_tidy.html">cdc_providers_tidy()</a></code>
-
-        </dt>
-        <dd>Tidy CDC Locator provider output</dd>
       </dl></div>
-  </main></div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

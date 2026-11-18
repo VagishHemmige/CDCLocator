@@ -4,9 +4,10 @@ Adapted from CDCAtlas’s `REVIEWING.md` at
 [`fef315a`](https://github.com/VagishHemmige/CDCAtlas/blob/fef315a/REVIEWING.md).
 
 These standards apply to ChatGPT and Claude, within the user’s
-permissions. Read [AGENTS.md](AGENTS.md). A review is an assessment of a
-defined change, not automatic permission to edit, publish, approve or
-merge.
+permissions. Read
+[AGENTS.md](https://vagishhemmige.github.io/CDCLocator/AGENTS.md). A
+review is an assessment of a defined change, not automatic permission to
+edit, publish, approve or merge.
 
 ## Policy revision and coverage
 

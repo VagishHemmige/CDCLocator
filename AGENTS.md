@@ -9,9 +9,9 @@ committed version.
 
 This file applies to all substantive CDCLocator work: implementation,
 design, debugging, tests, documentation and review. Read
-[REVIEWING.md](REVIEWING.md) for shared review standards. Neither
-repository files nor skills expand the user’s permissions; direct user
-instructions control.
+[REVIEWING.md](https://vagishhemmige.github.io/CDCLocator/REVIEWING.md)
+for shared review standards. Neither repository files nor skills expand
+the user’s permissions; direct user instructions control.
 
 Repository: <https://github.com/VagishHemmige/CDCLocator> The default
 branch was verified as `master` on 2026-11-15; verify it again when
@@ -38,20 +38,28 @@ tibbles.
 - `R/auth.R`: `.build_auth_headers()` finds credentials (arguments
   first, then the `CDC_LOCATOR_CLIENT_ID` and `CDC_LOCATOR_CLIENT_TOKEN`
   environment variables);
-  [`cdc_locator_set_credentials()`](reference/cdc_locator_set_credentials.md)
+  [`cdc_locator_set_credentials()`](https://vagishhemmige.github.io/CDCLocator/reference/cdc_locator_set_credentials.md)
   helps the user add them to `.Renviron`.
-- `R/providers.R`: [`cdc_providers()`](reference/cdc_providers.md),
+- `R/providers.R`:
+  [`cdc_providers()`](https://vagishhemmige.github.io/CDCLocator/reference/cdc_providers.md),
   providers within a radius of a ZIP code.
 - `R/providers_tidy.R`:
-  [`cdc_providers_tidy()`](reference/cdc_providers_tidy.md), flattens
-  the nested provider columns returned by
-  [`cdc_providers()`](reference/cdc_providers.md).
+  [`cdc_providers_tidy()`](https://vagishhemmige.github.io/CDCLocator/reference/cdc_providers_tidy.md),
+  flattens the nested provider columns returned by
+  [`cdc_providers()`](https://vagishhemmige.github.io/CDCLocator/reference/cdc_providers.md).
 - `R/address_place.R`, `R/address_point.R`:
-  [`cdc_address_place()`](reference/cdc_address_place.md) and
-  [`cdc_address_point()`](reference/cdc_address_point.md), translate a
-  city and state or a latitude and longitude into a ZIP code.
+  [`cdc_address_place()`](https://vagishhemmige.github.io/CDCLocator/reference/cdc_address_place.md)
+  and
+  [`cdc_address_point()`](https://vagishhemmige.github.io/CDCLocator/reference/cdc_address_point.md),
+  translate a city and state or a latitude and longitude into a ZIP
+  code.
 - `R/enums.R`: the valid `services` values and their validator.
-- `R/utils.R`: small internal helpers.
+- `R/utils.R`: small internal helpers, including the argument checks.
+- `vignettes/`: the user guide: getting started, credentials and
+  networks, services and searching, working with results, and
+  troubleshooting. Their code runs only when built with credentials and
+  `CDC_LOCATOR_LIVE_TESTS=true`. Update them, and `README.Rmd`, when
+  behavior or error messages change.
 
 Read the relevant source and documentation before advising on or
 changing it. Offline tests mock every request;
@@ -68,8 +76,8 @@ date. Behavior observed on 2026-11-16 that the code relies on:
 - Services combine as “any of”: a request with two or three services
   returned the union of their single-service results. All 14 in one
   request returned no providers, so
-  [`cdc_providers()`](reference/cdc_providers.md) sends at most three
-  per request.
+  [`cdc_providers()`](https://vagishhemmige.github.io/CDCLocator/reference/cdc_providers.md)
+  sends at most three per request.
 - Validation errors are HTTP 500 with a plain-text body; a rejected
   token is HTTP 403 with a JSON `Message`.
 - Requests from outside the US got HTTP 403 from CloudFront (an HTML

@@ -19,11 +19,13 @@ cdc_providers(
 
 - zipcode:
 
-  Character scalar. ZIP code.
+  A five-digit ZIP code as a string, such as `"02110"`. A number would
+  lose leading zeros, so it is rejected.
 
 - radius:
 
-  Integer search radius in miles (1–50, default: 10).
+  Search radius in miles: a whole number from 1 to 50. The default is
+  10.
 
 - services:
 

@@ -13,11 +13,12 @@ cdc_address_place(city, state, client_id = NULL, client_token = NULL)
 
 - city:
 
-  Character scalar. City name.
+  City name, a single string.
 
 - state:
 
-  Character scalar. State name or postal abbreviation.
+  State, a single string: the postal abbreviation (`"IL"`) or the full
+  name.
 
 - client_id:
 

@@ -13,11 +13,12 @@ cdc_address_point(latitude, longitude, client_id = NULL, client_token = NULL)
 
 - latitude:
 
-  Numeric latitude.
+  Latitude in decimal degrees, from -90 to 90.
 
 - longitude:
 
-  Numeric longitude.
+  Longitude in decimal degrees, from -180 to 180. Places in the US have
+  negative longitudes.
 
 - client_id:
 

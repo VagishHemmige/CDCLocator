@@ -17,7 +17,15 @@ radius of a ZIP code."></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/CDCLocator.html">Get started</a></li>
+<li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/credentials-and-networks.html">Credentials and networks</a></li>
+    <li><a class="dropdown-item" href="../articles/services-and-searching.html">Services and searching</a></li>
+    <li><a class="dropdown-item" href="../articles/working-with-results.html">Working with results</a></li>
+    <li><a class="dropdown-item" href="../articles/troubleshooting.html">Troubleshooting</a></li>
+  </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -56,11 +64,13 @@ radius of a ZIP code.</p>
 
 
 <dl><dt id="arg-zipcode">zipcode<a class="anchor" aria-label="anchor" href="#arg-zipcode"></a></dt>
-<dd><p>Character scalar. ZIP code.</p></dd>
+<dd><p>A five-digit ZIP code as a string, such as <code>"02110"</code>.
+A number would lose leading zeros, so it is rejected.</p></dd>
 
 
 <dt id="arg-radius">radius<a class="anchor" aria-label="anchor" href="#arg-radius"></a></dt>
-<dd><p>Integer search radius in miles (1–50, default: 10).</p></dd>
+<dd><p>Search radius in miles: a whole number from 1 to 50. The
+default is 10.</p></dd>
 
 
 <dt id="arg-services">services<a class="anchor" aria-label="anchor" href="#arg-services"></a></dt>

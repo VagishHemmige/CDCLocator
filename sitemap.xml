@@ -1,17 +1,23 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
-<url><loc>/404.html</loc></url>
-<url><loc>/AGENTS.html</loc></url>
-<url><loc>/LICENSE-text.html</loc></url>
-<url><loc>/LICENSE.html</loc></url>
-<url><loc>/REVIEWING.html</loc></url>
-<url><loc>/authors.html</loc></url>
-<url><loc>/index.html</loc></url>
-<url><loc>/news/index.html</loc></url>
-<url><loc>/reference/cdc_address_place.html</loc></url>
-<url><loc>/reference/cdc_address_point.html</loc></url>
-<url><loc>/reference/cdc_locator_set_credentials.html</loc></url>
-<url><loc>/reference/cdc_providers.html</loc></url>
-<url><loc>/reference/cdc_providers_tidy.html</loc></url>
-<url><loc>/reference/index.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/404.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/AGENTS.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/LICENSE-text.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/LICENSE.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/REVIEWING.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/articles/CDCLocator.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/articles/credentials-and-networks.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/articles/index.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/articles/services-and-searching.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/articles/troubleshooting.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/articles/working-with-results.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/authors.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/index.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/news/index.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/reference/cdc_address_place.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/reference/cdc_address_point.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/reference/cdc_locator_set_credentials.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/reference/cdc_providers.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/reference/cdc_providers_tidy.html</loc></url>
+<url><loc>https://vagishhemmige.github.io/CDCLocator/reference/index.html</loc></url>
 </urlset>
 
