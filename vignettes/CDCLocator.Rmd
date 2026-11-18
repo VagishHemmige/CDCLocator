@@ -44,9 +44,9 @@ session.
 
 ## Step 1: credentials
 
-The API needs a client ID and a client token. HIV.gov issues them on request;
-see [HIV.gov's announcement of the Locator
-API](https://www.hiv.gov/blog/announcing-the-locator-api).
+The API needs a client ID and a client token. HIV.gov issues them on request:
+the [Locator page on HIV.gov](https://www.hiv.gov/locator) says how to ask, and
+in November 2026 it pointed to contact@hiv.gov.
 
 The best place to keep them is your `.Renviron` file, which R reads when it
 starts. Open it with `usethis::edit_r_environ()`, add these two lines with your

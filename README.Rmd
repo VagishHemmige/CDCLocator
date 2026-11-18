@@ -37,21 +37,30 @@ development, and the API's behavior described here was observed in November
 
 ## Installation
 
-Install the development version from GitHub:
+Install the development version from GitHub, building the guides so you can
+open them in R with `vignette()`:
 
 ```{r}
-# install.packages("pak")
-pak::pak("VagishHemmige/CDCLocator")
+# install.packages("remotes")
+remotes::install_github(
+  "VagishHemmige/CDCLocator",
+  dependencies = TRUE,
+  build_vignettes = TRUE
+)
 ```
+
+Building the guides needs Pandoc, which comes with RStudio. Without it, or to
+install faster, leave out `build_vignettes = TRUE`: the package works the same,
+and the guides are on the package website instead.
 
 ## Before you start: API credentials
 
 The Locator API needs a client ID and a client token, which HIV.gov issues on
-request. See [HIV.gov's announcement of the Locator
-API](https://www.hiv.gov/blog/announcing-the-locator-api) for how to ask.
+request. The [Locator page on HIV.gov](https://www.hiv.gov/locator) says how
+to ask; in November 2026 it pointed to contact@hiv.gov.
 
-Once you have them, store them in your `.Renviron` file so every R session can
-find them. `usethis::edit_r_environ()` opens it. Add two lines, then restart
+Once you have them, store them in your `.Renviron` file so R finds them each
+time it starts. `usethis::edit_r_environ()` opens it. Add two lines, then restart
 R:
 
 ```
@@ -60,8 +69,9 @@ CDC_LOCATOR_CLIENT_TOKEN=your-client-token
 ```
 
 Treat the token like a password: keep it out of scripts, and never commit
-`.Renviron` to Git. `vignette("credentials-and-networks")` has more detail,
-including what to do on a shared or cloud computer.
+`.Renviron` to Git. [Credentials and networks](https://vagishhemmige.github.io/CDCLocator/articles/credentials-and-networks.html)
+has more detail, including how a project's own `.Renviron` affects this and
+what to do on a shared or cloud computer.
 
 ## Example
 
@@ -107,20 +117,21 @@ Both return a one-row tibble with the ZIP code, which you can pass to
   a time and combines the results. The default search makes five requests,
   spaced half a second apart, so it takes a few seconds.
 - **The same clinic can appear more than once** when it offers several
-  services. See `vignette("working-with-results")`.
+  services. See [Working with results](https://vagishhemmige.github.io/CDCLocator/articles/working-with-results.html).
 - **Some networks are refused.** The API has refused requests from outside the
   US and from some cloud servers. If you get an HTTP 403 error, see
-  `vignette("troubleshooting")`.
+  [Troubleshooting](https://vagishhemmige.github.io/CDCLocator/articles/troubleshooting.html).
 
 ## Learn more
 
-- `vignette("CDCLocator")`: a walk through a first search.
-- `vignette("credentials-and-networks")`: getting and storing credentials,
-  and where the API can be reached from.
-- `vignette("services-and-searching")`: the 14 services, the radius and how
-  searches are made.
-- `vignette("working-with-results")`: the columns, duplicates, mapping and
-  saving.
-- `vignette("troubleshooting")`: what each error means and what to do.
+The guides are on the [package website](https://vagishhemmige.github.io/CDCLocator/). If you
+installed with `build_vignettes = TRUE`, they are also available in R with
+`vignette()`:
 
-The articles are also on the package website.
+| Guide | In R |
+|---|---|
+| [Getting started](https://vagishhemmige.github.io/CDCLocator/articles/CDCLocator.html): a first search, step by step | `vignette("CDCLocator")` |
+| [Credentials and networks](https://vagishhemmige.github.io/CDCLocator/articles/credentials-and-networks.html): getting and storing credentials, and where the API can be reached from | `vignette("credentials-and-networks")` |
+| [Services and searching](https://vagishhemmige.github.io/CDCLocator/articles/services-and-searching.html): the 14 services, the radius and how searches are made | `vignette("services-and-searching")` |
+| [Working with results](https://vagishhemmige.github.io/CDCLocator/articles/working-with-results.html): the columns, duplicates, mapping and saving | `vignette("working-with-results")` |
+| [Troubleshooting](https://vagishhemmige.github.io/CDCLocator/articles/troubleshooting.html): what each error means and what to do | `vignette("troubleshooting")` |

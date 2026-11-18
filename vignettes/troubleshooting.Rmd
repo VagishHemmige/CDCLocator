@@ -22,6 +22,9 @@ matters, the argument.
 R can't find your client ID and token, so nothing was sent.
 
 - If you added them to `.Renviron`, restart R: the file is read at startup.
+- If the project you're working in has its own `.Renviron`, R reads that file
+  instead of the one in your home folder. Add the credentials there too, or
+  remove the project's file.
 - Check the names are exactly `CDC_LOCATOR_CLIENT_ID` and
   `CDC_LOCATOR_CLIENT_TOKEN`.
 - Check, without printing the values:
