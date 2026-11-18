@@ -44,7 +44,11 @@ near a ZIP code, city and state, or point, and returns tibbles.
   `cdc_address_point()`, translate a city and state or a latitude and
   longitude into a ZIP code.
 - `R/enums.R`: the valid `services` values and their validator.
-- `R/utils.R`: small internal helpers.
+- `R/utils.R`: small internal helpers, including the argument checks.
+- `vignettes/`: the user guide: getting started, credentials and networks,
+  services and searching, working with results, and troubleshooting. Their
+  code runs only when built with credentials and `CDC_LOCATOR_LIVE_TESTS=true`.
+  Update them, and `README.Rmd`, when behavior or error messages change.
 
 Read the relevant source and documentation before advising on or changing it.
 Offline tests mock every request; `tests/testthat/test-live.R` holds the live
