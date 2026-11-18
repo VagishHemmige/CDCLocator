@@ -31,7 +31,8 @@ cdc_providers(
   `"hivtesting"`, `"stdtesting"`, `"selftesting"`, `"preptesting"`,
   `"pep"`, `"condom"`, `"hepc"`, `"doxypep"`, `"mailintesting"`,
   `"ryanwhite"`, `"clinics"`, `"substanceabuse"`, `"mentalhealth"` or
-  `"housing"`. `NULL`, the default, searches for all of them.
+  `"housing"`. `NULL`, the default, searches for all of them. More than
+  three services take more than one request.
 
 - client_id:
 
@@ -44,3 +45,12 @@ cdc_providers(
 ## Value
 
 A tibble of service providers.
+
+## Details
+
+The API returns providers offering any of the requested services, but
+returned no providers when all 14 services were requested at once
+(observed 2026-11-16). So services are requested at most three at a
+time, and the results are combined: the default, every service, takes
+five requests. Providers returned by more than one request are kept
+once, by `id`.
