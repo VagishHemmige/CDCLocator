@@ -2,16 +2,42 @@
 % Please edit documentation in R/auth.R
 \name{cdc_locator_set_credentials}
 \alias{cdc_locator_set_credentials}
-\title{Set CDC Locator API credentials}
+\title{Set CDC Locator API credentials for this session}
 \usage{
 cdc_locator_set_credentials(client_id, client_token)
 }
 \arguments{
-\item{client_id}{CDC client ID}
+\item{client_id}{Your Locator API client ID, a single string.}
 
-\item{client_token}{CDC client token}
+\item{client_token}{Your Locator API client token, a single string.}
+}
+\value{
+\code{NULL}, invisibly. Called for its side effect of setting the two
+environment variables.
 }
 \description{
-Stores credentials in the user's .Renviron file. You only need to run
-this once per machine. Restart R after setting credentials.
+Sets the \code{CDC_LOCATOR_CLIENT_ID} and \code{CDC_LOCATOR_CLIENT_TOKEN} environment
+variables for the current R session, so the other functions can find them.
+The values are never printed, and no file is written.
+}
+\details{
+To keep the credentials between sessions, add both variables to your
+\code{.Renviron} file instead, for example with \code{usethis::edit_r_environ()}, and
+restart R:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{CDC_LOCATOR_CLIENT_ID=your-client-id
+CDC_LOCATOR_CLIENT_TOKEN=your-client-token
+}\if{html}{\out{</div>}}
+
+Avoid typing the token into a script you might share. Calling this function
+with values read from a password manager, or with
+\code{rstudioapi::askForPassword()}, keeps them out of your code.
+}
+\examples{
+\dontrun{
+cdc_locator_set_credentials(
+  client_id = "your-client-id",
+  client_token = "your-client-token"
+)
+}
 }
