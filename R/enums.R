@@ -52,26 +52,40 @@
 #'
 #' @return The services as the API expects them: lowercase, or every service
 #'   when `services` is `NULL`.
+#' @param call The frame named in errors: the user-facing function.
 #' @noRd
-.validate_cdc_locator_services <- function(services) {
+.validate_cdc_locator_services <- function(services, call = parent.frame()) {
   if (is.null(services)) {
     return(.cdc_locator_services)
   }
 
   if (!is.character(services)) {
-    cli::cli_abort("{.arg services} must be a character vector.")
+    cli::cli_abort("{.arg services} must be a character vector.", call = call)
+  }
+
+  if (length(services) == 0) {
+    cli::cli_abort(
+      c(
+        "{.arg services} must name at least one service.",
+        "i" = "Use {.code services = NULL} to search every service."
+      ),
+      call = call
+    )
   }
 
   services <- tolower(services)
   bad <- setdiff(services, .cdc_locator_services)
 
   if (length(bad) > 0) {
-    cli::cli_abort(c(
-      "Invalid CDC Locator service enum(s):",
-      "x" = paste(bad, collapse = ", "),
-      "i" = "Valid values are:",
-      " " = paste(.cdc_locator_services, collapse = ", ")
-    ))
+    cli::cli_abort(
+      c(
+        "Invalid CDC Locator service enum(s):",
+        "x" = paste(bad, collapse = ", "),
+        "i" = "Valid values are:",
+        " " = paste(.cdc_locator_services, collapse = ", ")
+      ),
+      call = call
+    )
   }
 
   services

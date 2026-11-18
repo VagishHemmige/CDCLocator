@@ -7,6 +7,12 @@
 #' Queries the CDC Locator API to return service providers within a given
 #' radius of a ZIP code.
 #'
+#' The API returns providers offering any of the requested services, but
+#' returned no providers when all 14 services were requested at once (observed
+#' 2026-11-16). So services are requested at most three at a time, and the
+#' results are combined: the default, every service, takes five requests.
+#' Providers returned by more than one request are kept once, by `id`.
+#'
 #' @param zipcode Character scalar. ZIP code.
 #' @param radius Integer search radius in miles (1–50, default: 10).
 #' @param services Character vector of services to search for, matched in
@@ -14,7 +20,7 @@
 #'   `"preptesting"`, `"pep"`, `"condom"`, `"hepc"`, `"doxypep"`,
 #'   `"mailintesting"`, `"ryanwhite"`, `"clinics"`, `"substanceabuse"`,
 #'   `"mentalhealth"` or `"housing"`. `NULL`, the default, searches for all
-#'   of them.
+#'   of them. More than three services take more than one request.
 #' @param client_id Optional CDC client ID override.
 #' @param client_token Optional CDC client token override.
 #'
@@ -44,16 +50,52 @@ cdc_providers <- function(
 
   services <- .validate_cdc_locator_services(services)
 
-  # ---- build query --------------------------------------------------------
-  # The API requires radius and services (observed 2026-11-16), so both are
-  # always sent; NULL services means every service.
+  # ---- one request per batch of up to three services -----------------------
+  batches <- split(
+    services,
+    ceiling(seq_along(services) / .cdc_locator_batch_size)
+  )
+  caller <- environment()
+  results <- lapply(batches, \(batch) {
+    .cdc_providers_request(
+      zipcode,
+      radius,
+      batch,
+      client_id,
+      client_token,
+      call = caller
+    )
+  })
+
+  # An empty batch has a different `attributes` type from a populated one, so
+  # bind only populated batches; if none are, return the empty schema.
+  populated <- Filter(\(x) nrow(x) > 0, results)
+  if (length(populated) == 0) {
+    return(results[[1]])
+  }
+  out <- dplyr::bind_rows(unname(populated))
+  out[!duplicated(out$id), ]
+}
+
+# The most services sent in one request. All 14 at once returned no providers;
+# up to three returned the union of their single-service results.
+.cdc_locator_batch_size <- 3
+
+.cdc_providers_request <- function(
+  zipcode,
+  radius,
+  services,
+  client_id,
+  client_token,
+  call
+) {
+  # The API requires radius and services (observed 2026-11-16).
   query <- list(
     zipcode = zipcode,
     radius = radius,
     services = paste(services, collapse = ",")
   )
 
-  # ---- build + perform request --------------------------------------------
   req <- .cdc_locator_request(
     endpoint = "providers",
     query = query,
@@ -63,7 +105,6 @@ cdc_providers <- function(
 
   body <- .perform_cdc_locator_request(req)
 
-  # ---- normalize response -------------------------------------------------
   # No matching providers comes back as an empty JSON array, which parses to
   # an unnamed empty list. Providers parse to a data frame. Anything else
   # (null, an object) is not a provider list and must not look like "none".
@@ -81,7 +122,21 @@ cdc_providers <- function(
         "The CDC Locator API returned an unexpected response.",
         "i" = "Expected a JSON array of providers."
       ),
-      class = "cdclocator_unexpected_response"
+      class = "cdclocator_unexpected_response",
+      call = call
+    )
+  }
+
+  # Providers are combined across batches by `id`, so every record needs one.
+  ids <- body$id
+  if (is.null(ids) || any(is.na(ids)) || !all(nzchar(as.character(ids)))) {
+    cli::cli_abort(
+      c(
+        "The CDC Locator API returned an unexpected response.",
+        "i" = "Every provider should have a non-empty {.field id}."
+      ),
+      class = "cdclocator_unexpected_response",
+      call = call
     )
   }
 

@@ -48,3 +48,30 @@ test_that("cdc_providers_tidy() returns zero rows when no providers match", {
 test_that("cdc_providers_tidy() rejects input that is not a tibble", {
   expect_snapshot(cdc_providers_tidy(data.frame()), error = TRUE)
 })
+
+test_that("cdc_providers_tidy() handles batches whose providers differ in shape", {
+  local_fake_credentials()
+  local_mock_locator(function(req) {
+    if ("hivtesting" %in% req_services(req)) {
+      json_response(list(fake_provider("a1", languages = list("English"))))
+    } else {
+      json_response(list(
+        fake_provider(
+          "b2",
+          languages = list("English", "Spanish"),
+          website = ""
+        ),
+        fake_provider("c3", languages = list())
+      ))
+    }
+  })
+  out <- cdc_providers_tidy(
+    cdc_providers("20176", services = c("hivtesting", "pep", "hepc", "condom"))
+  )
+
+  expect_equal(out$provider_id, c("a1", "b2", "c3"))
+  expect_equal(
+    out$languages,
+    list("English", c("English", "Spanish"), character())
+  )
+})

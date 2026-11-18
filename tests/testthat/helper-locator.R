@@ -25,21 +25,29 @@ raw_json_response <- function(text, status = 200L) {
   )
 }
 
-# Mocks every request in the calling test with `response` and returns an
-# environment whose `req` holds the last request made.
+# Mocks every request in the calling test. `response` is an httr2 response,
+# or a function of the request that returns one. Returns an environment whose
+# `req` holds the last request and `reqs` every request, in order.
 local_mock_locator <- function(response, env = parent.frame()) {
   # Mocked requests need no pacing; the option is restored when the test ends.
   # Live tests don't use this helper, so they keep the real pacing.
   withr::local_options(cdclocator.min_gap = 0, .local_envir = env)
   seen <- new.env()
+  seen$reqs <- list()
   httr2::local_mocked_responses(
     function(req) {
       seen$req <- req
-      response
+      seen$reqs <- c(seen$reqs, list(req))
+      if (is.function(response)) response(req) else response
     },
     env = env
   )
   seen
+}
+
+# The comma-separated services of a mocked request, as a character vector.
+req_services <- function(req) {
+  strsplit(httr2::url_parse(req$url)$query$services, ",")[[1]]
 }
 
 # Skips unless live tests were asked for and credentials are present.
