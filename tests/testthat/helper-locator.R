@@ -31,7 +31,11 @@ raw_json_response <- function(text, status = 200L) {
 local_mock_locator <- function(response, env = parent.frame()) {
   # Mocked requests need no pacing; the option is restored when the test ends.
   # Live tests don't use this helper, so they keep the real pacing.
-  withr::local_options(cdclocator.min_gap = 0, .local_envir = env)
+  withr::local_options(
+    cdclocator.min_gap = 0,
+    cdclocator.sweep_gap = 0,
+    .local_envir = env
+  )
   seen <- new.env()
   seen$reqs <- list()
   httr2::local_mocked_responses(
@@ -68,7 +72,8 @@ skip_if_not_live <- function() {
 fake_provider <- function(
   id = "a1",
   languages = list("English"),
-  website = "https://example.org"
+  website = "https://example.org",
+  distance = 1.2
 ) {
   list(
     type = "provider",
@@ -86,7 +91,7 @@ fake_provider <- function(
       contact = list(others = NULL, telephone = "555-0100", website = website),
       languages = languages,
       point = list(latitude = 39.1, longitude = -77.5),
-      distance = 1.2
+      distance = distance
     )
   )
 }
