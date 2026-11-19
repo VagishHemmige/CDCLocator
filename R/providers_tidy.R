@@ -5,7 +5,8 @@
 #' @param providers Output from cdc_providers()
 #'
 #' @return A tibble with one row per provider and columns `provider_type`,
-#'   `provider_id`, `name`, `city`, `country`, `state`, `street`, `zipcode`,
+#'   `provider_id`, `search_zipcode` (the ZIP code whose search found the
+#'   provider), `name`, `city`, `country`, `state`, `street`, `zipcode`,
 #'   `categories`, `contact_others`, `contact_telephone`, `contact_website`,
 #'   `languages` (a list of character vectors), `latitude`, `longitude` and
 #'   `distance` (miles from the searched ZIP code). When no providers matched,
@@ -46,6 +47,7 @@ cdc_providers_tidy <- function(providers) {
   tibble::tibble(
     provider_type = character(),
     provider_id = character(),
+    search_zipcode = character(),
     name = character(),
     city = character(),
     country = character(),

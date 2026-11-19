@@ -113,14 +113,6 @@
       ! `zipcode` must be a five-digit ZIP code, such as "02110".
       x You supplied "02110-1234".
 
----
-
-    Code
-      cdc_providers(c("02110", "20176"))
-    Condition
-      Error in `cdc_providers()`:
-      ! `zipcode` must be a single non-empty string.
-
 # cdc_providers() explains that a numeric ZIP code loses leading zeros
 
     Code
@@ -161,4 +153,106 @@
     Condition
       Error in `cdc_providers()`:
       ! `radius` must be between 1 and 50 miles.
+
+# cdc_providers() checks every ZIP code before any request
+
+    Code
+      cdc_providers(c("20176", "2110", "abcde"))
+    Condition
+      Error in `cdc_providers()`:
+      ! Each `zipcode` must be a five-digit ZIP code, such as "02110".
+      x Not valid: "2110" and "abcde".
+
+---
+
+    Code
+      cdc_providers(c("20176", NA))
+    Condition
+      Error in `cdc_providers()`:
+      ! `zipcode` can't contain missing or empty values.
+
+---
+
+    Code
+      cdc_providers(c("20176", ""))
+    Condition
+      Error in `cdc_providers()`:
+      ! `zipcode` can't contain missing or empty values.
+
+---
+
+    Code
+      cdc_providers(character())
+    Condition
+      Error in `cdc_providers()`:
+      ! `zipcode` must be a character vector of ZIP codes, such as "02110".
+
+---
+
+    Code
+      cdc_providers(c(20176, 2110))
+    Condition
+      Error in `cdc_providers()`:
+      ! `zipcode` must be a string, such as "02110".
+      i Numbers drop leading zeros: 02110 becomes 2110.
+
+# cdc_providers() skips a failing ZIP code among several
+
+    Code
+      out <- cdc_providers(c("20176", "00000", "10001"), services = "hivtesting",
+      progress = FALSE)
+    Condition
+      Warning:
+      Skipped 1 ZIP code whose search failed: "00000".
+      i See `attr(result, "failures")` for the API's messages.
+
+# cdc_providers() rejects a min_gap below the package's minimum
+
+    Code
+      cdc_providers("20176", min_gap = 0.1)
+    Condition
+      Error in `cdc_providers()`:
+      ! `min_gap` must be between 0.5 and 60 seconds.
+
+---
+
+    Code
+      cdc_providers("20176", min_gap = "1")
+    Condition
+      Error in `cdc_providers()`:
+      ! `min_gap` must be a single number, not missing or infinite.
+
+# cdc_providers() checks progress and distinct
+
+    Code
+      cdc_providers("20176", progress = NA)
+    Condition
+      Error in `cdc_providers()`:
+      ! `progress` must be `TRUE` or `FALSE`.
+
+---
+
+    Code
+      cdc_providers("20176", distinct = "yes")
+    Condition
+      Error in `cdc_providers()`:
+      ! `distinct` must be `TRUE` or `FALSE`.
+
+# cdc_providers() summarizes a search of several ZIP codes
+
+    Code
+      out <- cdc_providers(c("20176", "20147"), services = "hivtesting")
+    Message
+      v Searched 2 ZIP codes: 2 providers.
+
+---
+
+    Code
+      out <- cdc_providers(c("20176", "00000"), services = "hivtesting")
+    Message
+      v Searched 2 ZIP codes: 1 provider; 1 ZIP code failed.
+    Condition
+      Warning:
+      Skipped 1 ZIP code whose search failed: "00000".
+      i See `attr(result, "failures")` for the API's messages.
 

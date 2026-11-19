@@ -17,6 +17,22 @@ test_that("cdc_providers() finds providers with the default services", {
   expect_false(anyDuplicated(out$id) > 0)
 })
 
+test_that("cdc_providers() searches two ZIP codes, each provider once", {
+  # Two requests: one service, two ZIP codes a few miles apart.
+  skip_if_not_live()
+  out <- cdc_providers(
+    c("10001", "10018"),
+    radius = 1,
+    services = "hivtesting",
+    progress = FALSE
+  )
+
+  expect_gt(nrow(out), 0)
+  expect_false(anyDuplicated(out$id) > 0)
+  expect_in(out$search_zipcode, c("10001", "10018"))
+  expect_null(attr(out, "failures"))
+})
+
 test_that("cdc_providers_tidy() flattens real provider rows", {
   skip_if_not_live()
   out <- cdc_providers_tidy(

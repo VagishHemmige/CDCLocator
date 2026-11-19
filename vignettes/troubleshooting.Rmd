@@ -85,6 +85,14 @@ The API doesn't recognize the ZIP code. The package checks that a ZIP code
 has five digits, but it can't know which ZIP codes exist. Check the number,
 or use `cdc_address_place()` to look one up from a city and state.
 
+### A warning that ZIP codes were skipped
+
+When you search several ZIP codes, a ZIP code whose search fails is skipped
+and the others carry on. The warning lists the skipped ZIP codes, and
+`attr(result, "failures")` has the API's message for each. An unknown ZIP code
+is the usual cause; see the section above. A refused request (HTTP 403)
+stops the whole search instead, since every ZIP code would be refused.
+
 ### Other HTTP 500 errors
 
 The API uses status 500 both for its own problems and for requests it

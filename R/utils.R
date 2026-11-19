@@ -72,3 +72,54 @@
   }
   invisible(x)
 }
+
+# One or more five-digit ZIP codes. A single ZIP code gets the same messages
+# as .check_zipcode(); several are all checked before any request is sent.
+.check_zipcodes <- function(x, arg, call) {
+  if (is.character(x) && length(x) == 1) {
+    return(.check_zipcode(x, arg, call))
+  }
+  if (is.numeric(x)) {
+    .check_zipcode(x, arg, call)
+  }
+  if (!is.character(x) || length(x) == 0) {
+    cli::cli_abort(
+      paste(
+        "{.arg {arg}} must be a character vector of ZIP codes,",
+        "such as {.val 02110}."
+      ),
+      call = call
+    )
+  }
+  if (anyNA(x) || !all(nzchar(trimws(x)))) {
+    cli::cli_abort(
+      "{.arg {arg}} can't contain missing or empty values.",
+      call = call
+    )
+  }
+  bad <- x[!grepl("^[0-9]{5}$", x)]
+  if (length(bad) > 0) {
+    cli::cli_abort(
+      c(
+        paste(
+          "Each {.arg {arg}} must be a five-digit ZIP code,",
+          "such as {.val 02110}."
+        ),
+        "x" = "Not valid: {.val {bad}}."
+      ),
+      call = call
+    )
+  }
+  invisible(x)
+}
+
+# A single TRUE or FALSE.
+.check_flag <- function(x, arg, call) {
+  if (!is.logical(x) || length(x) != 1 || is.na(x)) {
+    cli::cli_abort(
+      "{.arg {arg}} must be {.code TRUE} or {.code FALSE}.",
+      call = call
+    )
+  }
+  invisible(x)
+}

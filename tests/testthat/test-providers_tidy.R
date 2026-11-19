@@ -1,6 +1,7 @@
 tidy_columns <- c(
   "provider_type",
   "provider_id",
+  "search_zipcode",
   "name",
   "street",
   "city",

@@ -27,18 +27,19 @@ return, and how to sort, de-duplicate, map and save the results.
 
 ## What `cdc_providers()` returns
 
-A tibble with one row per provider record and three columns:
+A tibble with one row per provider record and four columns:
 
 | Column | Contents |
 |---|---|
 | `type` | The record type, such as `"provider"` |
 | `id` | The API's identifier for the record |
+| `search_zipcode` | The ZIP code whose search found the record |
 | `attributes` | Everything else, nested: name, address, contact details, languages, coordinates and distance |
 
 The nested form keeps exactly what the API sent. For most work, pass it to
 `cdc_providers_tidy()`.
 
-When nothing matches, the result has these three columns and zero rows.
+When nothing matches, the result has these four columns and zero rows.
 
 ## What `cdc_providers_tidy()` returns
 
@@ -48,6 +49,7 @@ One row per provider record, with these columns:
 |---|---|
 | `provider_type` | The record type (from `type`) |
 | `provider_id` | The API's identifier (from `id`) |
+| `search_zipcode` | The ZIP code whose search found the record. With several ZIP codes, `distance` is measured from this one |
 | `name` | The provider's name |
 | `street`, `city`, `state`, `zipcode`, `country` | The address. `state` may be a postal code or a full name, as the provider entered it |
 | `categories` | Present in the API's records, but empty in every record seen so far |
