@@ -23,7 +23,9 @@ policy revision. GitHub reviews exclude unpushed changes. Use the merge
 base for the initial PR diff. Read changed human-written code and
 relevant surrounding paths; trace effects through callers, returned
 objects, tests, documentation and affected workflows. Reserve
-whole-package coverage claims for whole-package reviews.
+whole-package coverage claims for whole-package reviews. For a
+commissioned whole-package review, follow
+[PACKAGE_REVIEW.md](https://vagishhemmige.github.io/CDCLocator/PACKAGE_REVIEW.md).
 
 On follow-up reviews, inspect changes since the last reviewed revision,
 keeping relevant full-PR context. Account for changed bases and
