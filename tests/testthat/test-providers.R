@@ -368,9 +368,43 @@ test_that("cdc_providers() skips a failing ZIP code among several", {
   )
 })
 
+test_that("cdc_providers() stops at a failure not tied to one ZIP code", {
+  # Only the API's "No point found for address" is known to concern one ZIP
+  # code; anything else may hit every ZIP code, so the search stops.
+  local_fake_credentials()
+  for (failure in list(
+    raw_json_response("Bad gateway", status = 502L),
+    raw_json_response("Something else went wrong", status = 500L)
+  )) {
+    mock <- local_mock_locator(function(req) {
+      if (req_zipcode(req) == "20147") {
+        failure
+      } else {
+        json_response(list(fake_provider("a1")))
+      }
+    })
+
+    expect_error(
+      cdc_providers(
+        c("20176", "20147", "10001"),
+        services = "hivtesting",
+        progress = FALSE
+      ),
+      class = "httr2_http"
+    )
+    expect_equal(
+      vapply(mock$reqs, req_zipcode, character(1)),
+      c("20176", "20147")
+    )
+  }
+})
+
 test_that("cdc_providers() returns zero rows when every ZIP code fails", {
   local_fake_credentials()
-  local_mock_locator(raw_json_response("No point found", status = 500L))
+  local_mock_locator(raw_json_response(
+    "No point found for address",
+    status = 500L
+  ))
   out <- suppressWarnings(cdc_providers(
     c("00000", "00001"),
     services = "hivtesting",
@@ -471,9 +505,12 @@ test_that("cdc_providers() summarizes a search of several ZIP codes", {
   local_fake_credentials()
   local_mock_locator(function(req) {
     if (req_zipcode(req) == "00000") {
-      raw_json_response("No point found", status = 500L)
+      raw_json_response("No point found for address", status = 500L)
     } else {
-      json_response(list(fake_provider(paste0("id-", req_zipcode(req)))))
+      json_response(list(
+        fake_provider("shared"),
+        fake_provider(req_zipcode(req))
+      ))
     }
   })
 
@@ -482,6 +519,13 @@ test_that("cdc_providers() summarizes a search of several ZIP codes", {
   )
   expect_snapshot(
     out <- cdc_providers(c("20176", "00000"), services = "hivtesting")
+  )
+  expect_snapshot(
+    out <- cdc_providers(
+      c("20176", "20147"),
+      services = "hivtesting",
+      distinct = FALSE
+    )
   )
   expect_silent(cdc_providers(
     c("20176", "20147"),

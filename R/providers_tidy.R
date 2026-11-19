@@ -4,7 +4,9 @@
 #'
 #' @param providers Output from cdc_providers()
 #'
-#' @return A tibble with one row per provider and columns `provider_type`,
+#' @return A tibble with one row for each row of `providers` (one per
+#'   provider record, or with `cdc_providers(distinct = FALSE)` one per
+#'   provider record and ZIP code that found it) and columns `provider_type`,
 #'   `provider_id`, `search_zipcode` (the ZIP code whose search found the
 #'   provider), `name`, `city`, `country`, `state`, `street`, `zipcode`,
 #'   `categories`, `contact_others`, `contact_telephone`, `contact_website`,

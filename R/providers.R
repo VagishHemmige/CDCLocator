@@ -21,16 +21,15 @@
 #' found from more than one ZIP code is kept once, from the search where it was
 #' nearest; its `distance` and `search_zipcode` then belong together.
 #'
-#' With one ZIP code, an error stops the call. With several, a ZIP code whose
-#' search fails (for example an unknown ZIP code, which the API reports as
-#' HTTP 500 "No point found for address") is skipped, the search carries on,
-#' and a warning lists the skipped ZIP codes at the end. They are also kept,
-#' with the API's message, in `attr(result, "failures")`; read it straight
-#' away, because most data-frame operations, including [cdc_providers_tidy()],
-#' drop it. A refused request (HTTP 401 or 403), too many requests (429), the
-#' service being unavailable (503), a network failure or an unexpected
-#' response still stops the call, because it would affect every remaining ZIP
-#' code.
+#' With one ZIP code, an error stops the call. With several, a ZIP code the
+#' API doesn't know (HTTP 500 "No point found for address") is skipped, the
+#' search carries on, and a warning lists the skipped ZIP codes at the end.
+#' They are also kept, with the API's message, in `attr(result, "failures")`;
+#' read it straight away, because most data-frame operations, including
+#' [cdc_providers_tidy()], drop it. Any other error, such as a refused
+#' request (HTTP 403), a gateway error (502 or 504), any other HTTP 500 or a
+#' network failure, stops the call, because it could affect every remaining
+#' ZIP code.
 #'
 #' Requests are spaced at least `min_gap` seconds apart: 0.5 seconds for one
 #' ZIP code and 1 second for several, unless you set it. A search of 30 ZIP
@@ -61,7 +60,9 @@
 #'
 #' @return A tibble of service providers, with columns `type`, `id`,
 #'   `search_zipcode` (the ZIP code whose search found the provider) and
-#'   `attributes`. Use [cdc_providers_tidy()] to flatten it.
+#'   `attributes`. There is one row per provider record, or, for several ZIP
+#'   codes with `distinct = FALSE`, one row per provider record and ZIP code
+#'   that found it. Use [cdc_providers_tidy()] to flatten it.
 #' @export
 cdc_providers <- function(
   zipcode,
@@ -173,11 +174,13 @@ cdc_providers <- function(
 
   if (progress) {
     n_zip <- length(zipcode)
-    n_found <- nrow(out)
+    n_providers <- length(unique(out$id))
+    n_rows <- nrow(out)
     n_failed <- length(failures)
     cli::cli_inform(c(
       "v" = paste0(
-        "Searched {n_zip} ZIP code{?s}: {n_found} provider{?s}",
+        "Searched {n_zip} ZIP code{?s}: {n_providers} provider{?s}",
+        if (n_rows != n_providers) " in {n_rows} row{?s}" else "",
         if (n_failed > 0) "; {n_failed} ZIP code{?s} failed" else "",
         "."
       )
@@ -218,11 +221,18 @@ cdc_providers <- function(
   }
 }
 
-# Whether one ZIP code's failure can be skipped in a search of several.
-# Refusals, rate limits and outages would hit every remaining ZIP code.
+# Whether one ZIP code's failure can be skipped in a search of several. Only
+# a failure known to concern that ZIP code is: the API's HTTP 500 "No point
+# found for address" for a ZIP code it doesn't know (observed 2026-11-17).
+# Anything else, such as a refusal, a gateway error or an unfamiliar 500,
+# could hit every remaining ZIP code, so the search stops.
 .cdc_providers_skippable <- function(e) {
-  status <- e$status %||% httr2::resp_status(e$resp)
-  !status %in% c(401L, 403L, 429L, 503L)
+  resp <- e$resp
+  if (is.null(resp) || httr2::resp_status(resp) != 500L) {
+    return(FALSE)
+  }
+  text <- tryCatch(httr2::resp_body_string(resp), error = \(err) "")
+  grepl("No point found for address", text, fixed = TRUE)
 }
 
 # A failure's message on one line, without cli formatting or bullets, for

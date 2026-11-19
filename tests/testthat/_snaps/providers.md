@@ -243,16 +243,23 @@
     Code
       out <- cdc_providers(c("20176", "20147"), services = "hivtesting")
     Message
-      v Searched 2 ZIP codes: 2 providers.
+      v Searched 2 ZIP codes: 3 providers.
 
 ---
 
     Code
       out <- cdc_providers(c("20176", "00000"), services = "hivtesting")
     Message
-      v Searched 2 ZIP codes: 1 provider; 1 ZIP code failed.
+      v Searched 2 ZIP codes: 2 providers; 1 ZIP code failed.
     Condition
       Warning:
       Skipped 1 ZIP code whose search failed: "00000".
       i See `attr(result, "failures")` for the API's messages.
+
+---
+
+    Code
+      out <- cdc_providers(c("20176", "20147"), services = "hivtesting", distinct = FALSE)
+    Message
+      v Searched 2 ZIP codes: 3 providers in 4 rows.
 

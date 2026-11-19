@@ -27,7 +27,9 @@ return, and how to sort, de-duplicate, map and save the results.
 
 ## What `cdc_providers()` returns
 
-A tibble with one row per provider record and four columns:
+A tibble with one row per provider record (or, for several ZIP codes with
+`distinct = FALSE`, one row per record and ZIP code that found it) and four
+columns:
 
 | Column | Contents |
 |---|---|
@@ -43,7 +45,7 @@ When nothing matches, the result has these four columns and zero rows.
 
 ## What `cdc_providers_tidy()` returns
 
-One row per provider record, with these columns:
+One row for each row of the `cdc_providers()` result, with these columns:
 
 | Column | Contents |
 |---|---|

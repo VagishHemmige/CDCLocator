@@ -87,11 +87,12 @@ or use `cdc_address_place()` to look one up from a city and state.
 
 ### A warning that ZIP codes were skipped
 
-When you search several ZIP codes, a ZIP code whose search fails is skipped
-and the others carry on. The warning lists the skipped ZIP codes, and
-`attr(result, "failures")` has the API's message for each. An unknown ZIP code
-is the usual cause; see the section above. A refused request (HTTP 403)
-stops the whole search instead, since every ZIP code would be refused.
+When you search several ZIP codes, a ZIP code the API doesn't know ("No
+point found for address", see the section above) is skipped and the others
+carry on. The warning lists the skipped ZIP codes, and
+`attr(result, "failures")` has the API's message for each. Any other error,
+such as a refused request (HTTP 403) or a gateway error, stops the whole
+search instead, since it could affect every ZIP code.
 
 ### Other HTTP 500 errors
 

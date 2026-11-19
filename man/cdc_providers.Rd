@@ -46,7 +46,9 @@ row for each ZIP code that found it.}
 \value{
 A tibble of service providers, with columns \code{type}, \code{id},
 \code{search_zipcode} (the ZIP code whose search found the provider) and
-\code{attributes}. Use \code{\link[=cdc_providers_tidy]{cdc_providers_tidy()}} to flatten it.
+\code{attributes}. There is one row per provider record, or, for several ZIP
+codes with \code{distinct = FALSE}, one row per provider record and ZIP code
+that found it. Use \code{\link[=cdc_providers_tidy]{cdc_providers_tidy()}} to flatten it.
 }
 \description{
 Queries the CDC Locator API to return service providers within a given
@@ -68,16 +70,15 @@ searched once. Nearby circles overlap, so with \code{distinct = TRUE} a provider
 found from more than one ZIP code is kept once, from the search where it was
 nearest; its \code{distance} and \code{search_zipcode} then belong together.
 
-With one ZIP code, an error stops the call. With several, a ZIP code whose
-search fails (for example an unknown ZIP code, which the API reports as
-HTTP 500 "No point found for address") is skipped, the search carries on,
-and a warning lists the skipped ZIP codes at the end. They are also kept,
-with the API's message, in \code{attr(result, "failures")}; read it straight
-away, because most data-frame operations, including \code{\link[=cdc_providers_tidy]{cdc_providers_tidy()}},
-drop it. A refused request (HTTP 401 or 403), too many requests (429), the
-service being unavailable (503), a network failure or an unexpected
-response still stops the call, because it would affect every remaining ZIP
-code.
+With one ZIP code, an error stops the call. With several, a ZIP code the
+API doesn't know (HTTP 500 "No point found for address") is skipped, the
+search carries on, and a warning lists the skipped ZIP codes at the end.
+They are also kept, with the API's message, in \code{attr(result, "failures")};
+read it straight away, because most data-frame operations, including
+\code{\link[=cdc_providers_tidy]{cdc_providers_tidy()}}, drop it. Any other error, such as a refused
+request (HTTP 403), a gateway error (502 or 504), any other HTTP 500 or a
+network failure, stops the call, because it could affect every remaining
+ZIP code.
 
 Requests are spaced at least \code{min_gap} seconds apart: 0.5 seconds for one
 ZIP code and 1 second for several, unless you set it. A search of 30 ZIP

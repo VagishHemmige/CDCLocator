@@ -181,15 +181,17 @@ Some things to know:
   record often comes back from more than one search. It is kept from the
   search where it was nearest, and `search_zipcode` says which one that was,
   so `distance` is measured from that ZIP code. To keep a row for every ZIP
-  code that found a record, use `distinct = FALSE`.
-- **A failing ZIP code is skipped, not fatal.** If one search fails, for
-  example because the API doesn't know a ZIP code, the others carry on, and a
+  code that found a record, use `distinct = FALSE`; then the same provider
+  can take several rows, so count providers with `unique(nearby$id)`, not
+  `nrow()`.
+- **An unknown ZIP code is skipped, not fatal.** If the API doesn't know a
+  ZIP code ("No point found for address"), the other searches carry on, and a
   warning at the end lists the ZIP codes skipped. The API's messages are in
   `attr(nearby, "failures")`; read it straight away, because
-  `cdc_providers_tidy()` and most data-frame operations drop it. A refused
-  request (HTTP 403) still stops the whole search, because every other ZIP
-  code would be refused too. With a single ZIP code, every error stops the
-  call, as before.
+  `cdc_providers_tidy()` and most data-frame operations drop it. Any other
+  error, such as a refused request (HTTP 403) or a gateway error (502 or
+  504), stops the whole search, because it could hit every other ZIP code
+  too. With a single ZIP code, every error stops the call, as before.
 - **It takes time, on purpose.** Requests are spaced at least one second
   apart when searching several ZIP codes, to go easy on the API: each ZIP
   code needs one request per three services, so 30 ZIP codes for every

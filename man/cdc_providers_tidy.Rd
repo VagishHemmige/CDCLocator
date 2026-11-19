@@ -10,7 +10,9 @@ cdc_providers_tidy(providers)
 \item{providers}{Output from cdc_providers()}
 }
 \value{
-A tibble with one row per provider and columns \code{provider_type},
+A tibble with one row for each row of \code{providers} (one per
+provider record, or with \code{cdc_providers(distinct = FALSE)} one per
+provider record and ZIP code that found it) and columns \code{provider_type},
 \code{provider_id}, \code{search_zipcode} (the ZIP code whose search found the
 provider), \code{name}, \code{city}, \code{country}, \code{state}, \code{street}, \code{zipcode},
 \code{categories}, \code{contact_others}, \code{contact_telephone}, \code{contact_website},
