@@ -201,7 +201,9 @@ grant publishing authority.
 
 ## Documentation maintenance
 
+For a commissioned whole-package review, follow [PACKAGE_REVIEW.md](PACKAGE_REVIEW.md).
+
 The paths above describe the current layout. Update them when files move.
-`.Rbuildignore` excludes AGENTS.md and REVIEWING.md from package builds, not
+`.Rbuildignore` excludes AGENTS.md, REVIEWING.md and PACKAGE_REVIEW.md from package builds, not
 from pkgdown, so they can become unlinked website pages. Do not claim these
 files are unpublished or private.
