@@ -84,6 +84,15 @@ number, or use
 [`cdc_address_place()`](https://vagishhemmige.github.io/CDCLocator/reference/cdc_address_place.md)
 to look one up from a city and state.
 
+### A warning that ZIP codes were skipped
+
+When you search several ZIP codes, a ZIP code the API doesn’t know (“No
+point found for address”, see the section above) is skipped and the
+others carry on. The warning lists the skipped ZIP codes, and
+`attr(result, "failures")` has the API’s message for each. Any other
+error, such as a refused request (HTTP 403) or a gateway error, stops
+the whole search instead, since it could affect every ZIP code.
+
 ### Other HTTP 500 errors
 
 The API uses status 500 both for its own problems and for requests it

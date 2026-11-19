@@ -87,8 +87,12 @@ Three things to notice:
   package asks for three at a time: five requests, half a second apart.
   The search takes a few seconds.
 
-The result has one row per provider record and three columns: `type`,
-`id`, and `attributes`, which holds the details in nested form.
+The result has one row per provider record and four columns: `type`,
+`id`, `search_zipcode` (the ZIP code searched), and `attributes`, which
+holds the details in nested form. `zipcode` can also be several ZIP
+codes;
+[`vignette("services-and-searching")`](https://vagishhemmige.github.io/CDCLocator/articles/services-and-searching.md)
+explains how those searches combine.
 
 ## Step 3: one row per provider
 

@@ -78,7 +78,9 @@ map and save the results.</p>
 <div class="section level2">
 <h2 id="what-cdc_providers-returns">What <code>cdc_providers()</code> returns<a class="anchor" aria-label="anchor" href="#what-cdc_providers-returns"></a>
 </h2>
-<p>A tibble with one row per provider record and three columns:</p>
+<p>A tibble with one row per provider record (or, for several ZIP codes
+with <code>distinct = FALSE</code>, one row per record and ZIP code that
+found it) and four columns:</p>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -99,6 +101,10 @@ map and save the results.</p>
 <td>The API’s identifier for the record</td>
 </tr>
 <tr class="odd">
+<td><code>search_zipcode</code></td>
+<td>The ZIP code whose search found the record</td>
+</tr>
+<tr class="even">
 <td><code>attributes</code></td>
 <td>Everything else, nested: name, address, contact details, languages,
 coordinates and distance</td>
@@ -107,13 +113,14 @@ coordinates and distance</td>
 </table>
 <p>The nested form keeps exactly what the API sent. For most work, pass
 it to <code><a href="../reference/cdc_providers_tidy.html">cdc_providers_tidy()</a></code>.</p>
-<p>When nothing matches, the result has these three columns and zero
+<p>When nothing matches, the result has these four columns and zero
 rows.</p>
 </div>
 <div class="section level2">
 <h2 id="what-cdc_providers_tidy-returns">What <code>cdc_providers_tidy()</code> returns<a class="anchor" aria-label="anchor" href="#what-cdc_providers_tidy-returns"></a>
 </h2>
-<p>One row per provider record, with these columns:</p>
+<p>One row for each row of the <code><a href="../reference/cdc_providers.html">cdc_providers()</a></code> result, with
+these columns:</p>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -133,10 +140,15 @@ rows.</p>
 <td>The API’s identifier (from <code>id</code>)</td>
 </tr>
 <tr class="odd">
+<td><code>search_zipcode</code></td>
+<td>The ZIP code whose search found the record. With several ZIP codes,
+<code>distance</code> is measured from this one</td>
+</tr>
+<tr class="even">
 <td><code>name</code></td>
 <td>The provider’s name</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>
 <code>street</code>, <code>city</code>, <code>state</code>,
 <code>zipcode</code>, <code>country</code>
@@ -144,36 +156,36 @@ rows.</p>
 <td>The address. <code>state</code> may be a postal code or a full name,
 as the provider entered it</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>categories</code></td>
 <td>Present in the API’s records, but empty in every record seen so
 far</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>contact_telephone</code></td>
 <td>Phone number, as entered: formats vary</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>contact_website</code></td>
 <td>Website; may be empty</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>contact_others</code></td>
 <td>Other contact details; empty so far</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>languages</code></td>
 <td>A list column: each entry is a character vector of the languages
 offered, such as <code>c("English", "Spanish")</code>
 </td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>
 <code>latitude</code>, <code>longitude</code>
 </td>
 <td>The provider’s location</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>distance</code></td>
 <td>Miles from the searched ZIP code’s location</td>
 </tr>

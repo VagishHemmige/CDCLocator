@@ -259,7 +259,8 @@ Requests with up to three services worked. So the package sends services
 API, so the default search takes a few seconds. If you only need some
 services, naming them is faster.</p>
 <p>If any of the requests fails, the whole search fails with that error.
-You never get a partial result without knowing it.</p>
+You never get a partial result without knowing it. (Searching several
+ZIP codes is different: see <a href="#searching-many-zip-codes">Searching many ZIP codes</a>.)</p>
 <p>Providers that come back from more than one request are kept once,
 matched by their <code>id</code>.</p>
 </div>
@@ -299,23 +300,47 @@ the ZIP code’s location.</p>
 <div class="section level2">
 <h2 id="searching-many-zip-codes">Searching many ZIP codes<a class="anchor" aria-label="anchor" href="#searching-many-zip-codes"></a>
 </h2>
-<p><code><a href="../reference/cdc_providers.html">cdc_providers()</a></code> takes one ZIP code at a time. For
-several, loop over them and bind the results. Keep the number of
-requests in mind: each ZIP code needs one request per three
-services.</p>
+<p><code><a href="../reference/cdc_providers.html">cdc_providers()</a></code> also takes several ZIP codes. It
+searches around each in turn and combines the results:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">zips</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"20176"</span>, <span class="st">"20147"</span>, <span class="st">"20148"</span><span class="op">)</span></span>
-<span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">zips</span>, \<span class="op">(</span><span class="va">zip</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="../reference/cdc_providers.html">cdc_providers</a></span><span class="op">(</span><span class="va">zip</span>, radius <span class="op">=</span> <span class="fl">5</span>, services <span class="op">=</span> <span class="st">"hivtesting"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu"><a href="../reference/cdc_providers_tidy.html">cdc_providers_tidy</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="op">}</span><span class="op">)</span></span>
-<span><span class="va">all_results</span> <span class="op">&lt;-</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Nearby ZIP codes overlap, so the same records come back more than once.</span></span>
-<span><span class="va">all_results</span> <span class="op">&lt;-</span> <span class="va">all_results</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/duplicated.html" class="external-link">duplicated</a></span><span class="op">(</span><span class="va">all_results</span><span class="op">$</span><span class="va">provider_id</span><span class="op">)</span>, <span class="op">]</span></span></code></pre></div>
-<p><code>distance</code> is measured from whichever ZIP code found the
-record first, so it means less once results from several ZIP codes are
-combined.</p>
+<span><span class="va">nearby</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cdc_providers.html">cdc_providers</a></span><span class="op">(</span><span class="va">zips</span>, radius <span class="op">=</span> <span class="fl">5</span>, services <span class="op">=</span> <span class="st">"hivtesting"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/cdc_providers_tidy.html">cdc_providers_tidy</a></span><span class="op">(</span><span class="va">nearby</span><span class="op">)</span></span></code></pre></div>
+<p>Some things to know:</p>
+<ul>
+<li>
+<strong>Each provider is kept once.</strong> Nearby ZIP codes
+overlap, so the same record often comes back from more than one search.
+It is kept from the search where it was nearest, and
+<code>search_zipcode</code> says which one that was, so
+<code>distance</code> is measured from that ZIP code. To keep a row for
+every ZIP code that found a record, use <code>distinct = FALSE</code>;
+then the same provider can take several rows, so count providers with
+<code>length(unique(nearby$id))</code>, not <code><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow()</a></code>.</li>
+<li>
+<strong>An unknown ZIP code is skipped, not fatal.</strong> If the
+API doesn’t know a ZIP code (“No point found for address”), the other
+searches carry on, and a warning at the end lists the ZIP codes skipped.
+The API’s messages are in <code>attr(nearby, "failures")</code>; read it
+straight away, because <code><a href="../reference/cdc_providers_tidy.html">cdc_providers_tidy()</a></code> and most
+data-frame operations drop it. Any other error, such as a refused
+request (HTTP 403) or a gateway error (502 or 504), stops the whole
+search, because it could hit every other ZIP code too. With a single ZIP
+code, every error stops the call, as before.</li>
+<li>
+<strong>It takes time, on purpose.</strong> Requests are spaced at
+least one second apart when searching several ZIP codes, to go easy on
+the API: each ZIP code needs one request per three services, so 30 ZIP
+codes for every service is 150 requests, about two and a half minutes.
+Set <code>min_gap</code> to change the spacing (it can’t go below half a
+second). In an interactive session a progress bar shows how far the
+search has got, and a summary line follows at the end;
+<code>progress = FALSE</code> turns both off.</li>
+<li>
+<strong>Stopping loses the results.</strong> Pressing Esc stops the
+search and discards what was found so far. For a long list, search it in
+smaller groups and combine them.</li>
+</ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

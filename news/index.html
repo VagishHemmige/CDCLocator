@@ -43,6 +43,10 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="cdclocator-development-version">CDCLocator (development version)<a class="anchor" aria-label="anchor" href="#cdclocator-development-version"></a></h2>
 <ul><li>Initial development version.</li>
+<li>
+<code><a href="../reference/cdc_providers.html">cdc_providers()</a></code> searches several ZIP codes in one call: give <code>zipcode</code> a vector. Each provider is kept once, from the search where it was nearest (<code>distinct = FALSE</code> keeps every row); a ZIP code the API doesn’t recognize (“No point found for address”) is skipped with a warning and listed in <code>attr(result, "failures")</code>, and any other error stops the search; requests are spaced one second apart (<code>min_gap</code>); and a progress bar shows how far the search has got (<code>progress</code>).</li>
+<li>
+<code><a href="../reference/cdc_providers.html">cdc_providers()</a></code> and <code><a href="../reference/cdc_providers_tidy.html">cdc_providers_tidy()</a></code> results have a new <code>search_zipcode</code> column: the ZIP code whose search found each provider.</li>
 </ul></div>
   </main></div>
 

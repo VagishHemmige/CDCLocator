@@ -164,9 +164,12 @@ searched.</strong> The API returns nothing when all 14 services are
 asked for at once, so the package asks for three at a time: five
 requests, half a second apart. The search takes a few seconds.</li>
 </ul>
-<p>The result has one row per provider record and three columns:
-<code>type</code>, <code>id</code>, and <code>attributes</code>, which
-holds the details in nested form.</p>
+<p>The result has one row per provider record and four columns:
+<code>type</code>, <code>id</code>, <code>search_zipcode</code> (the ZIP
+code searched), and <code>attributes</code>, which holds the details in
+nested form. <code>zipcode</code> can also be several ZIP codes;
+<code><a href="../articles/services-and-searching.html">vignette("services-and-searching")</a></code> explains how those
+searches combine.</p>
 </div>
 <div class="section level2">
 <h2 id="step-3-one-row-per-provider">Step 3: one row per provider<a class="anchor" aria-label="anchor" href="#step-3-one-row-per-provider"></a>

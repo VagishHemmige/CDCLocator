@@ -162,6 +162,17 @@ number, or use <code><a href="../reference/cdc_address_place.html">cdc_address_p
 city and state.</p>
 </div>
 <div class="section level3">
+<h3 id="a-warning-that-zip-codes-were-skipped">A warning that ZIP codes were skipped<a class="anchor" aria-label="anchor" href="#a-warning-that-zip-codes-were-skipped"></a>
+</h3>
+<p>When you search several ZIP codes, a ZIP code the API doesn’t know
+(“No point found for address”, see the section above) is skipped and the
+others carry on. The warning lists the skipped ZIP codes, and
+<code>attr(result, "failures")</code> has the API’s message for each.
+Any other error, such as a refused request (HTTP 403) or a gateway
+error, stops the whole search instead, since it could affect every ZIP
+code.</p>
+</div>
+<div class="section level3">
 <h3 id="other-http-500-errors">Other HTTP 500 errors<a class="anchor" aria-label="anchor" href="#other-http-500-errors"></a>
 </h3>
 <p>The API uses status 500 both for its own problems and for requests it

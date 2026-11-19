@@ -60,8 +60,11 @@
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A tibble with one row per provider and columns <code>provider_type</code>,
-<code>provider_id</code>, <code>name</code>, <code>city</code>, <code>country</code>, <code>state</code>, <code>street</code>, <code>zipcode</code>,
+    <p>A tibble with one row for each row of <code>providers</code> (one per
+provider record, or with <code>cdc_providers(distinct = FALSE)</code> one per
+provider record and ZIP code that found it) and columns <code>provider_type</code>,
+<code>provider_id</code>, <code>search_zipcode</code> (the ZIP code whose search found the
+provider), <code>name</code>, <code>city</code>, <code>country</code>, <code>state</code>, <code>street</code>, <code>zipcode</code>,
 <code>categories</code>, <code>contact_others</code>, <code>contact_telephone</code>, <code>contact_website</code>,
 <code>languages</code> (a list of character vectors), <code>latitude</code>, <code>longitude</code> and
 <code>distance</code> (miles from the searched ZIP code). When no providers matched,

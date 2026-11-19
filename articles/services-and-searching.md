@@ -114,7 +114,9 @@ so the default search takes a few seconds. If you only need some
 services, naming them is faster.
 
 If any of the requests fails, the whole search fails with that error.
-You never get a partial result without knowing it.
+You never get a partial result without knowing it. (Searching several
+ZIP codes is different: see [Searching many ZIP
+codes](#searching-many-zip-codes).)
 
 Providers that come back from more than one request are kept once,
 matched by their `id`.
@@ -166,22 +168,44 @@ code’s location.
 ## Searching many ZIP codes
 
 [`cdc_providers()`](https://vagishhemmige.github.io/CDCLocator/reference/cdc_providers.md)
-takes one ZIP code at a time. For several, loop over them and bind the
-results. Keep the number of requests in mind: each ZIP code needs one
-request per three services.
+also takes several ZIP codes. It searches around each in turn and
+combines the results:
 
 ``` r
 
 zips <- c("20176", "20147", "20148")
-results <- lapply(zips, \(zip) {
-  cdc_providers(zip, radius = 5, services = "hivtesting") |>
-    cdc_providers_tidy()
-})
-all_results <- dplyr::bind_rows(results)
-
-# Nearby ZIP codes overlap, so the same records come back more than once.
-all_results <- all_results[!duplicated(all_results$provider_id), ]
+nearby <- cdc_providers(zips, radius = 5, services = "hivtesting")
+cdc_providers_tidy(nearby)
 ```
 
-`distance` is measured from whichever ZIP code found the record first,
-so it means less once results from several ZIP codes are combined.
+Some things to know:
+
+- **Each provider is kept once.** Nearby ZIP codes overlap, so the same
+  record often comes back from more than one search. It is kept from the
+  search where it was nearest, and `search_zipcode` says which one that
+  was, so `distance` is measured from that ZIP code. To keep a row for
+  every ZIP code that found a record, use `distinct = FALSE`; then the
+  same provider can take several rows, so count providers with
+  `length(unique(nearby$id))`, not
+  [`nrow()`](https://rdrr.io/r/base/nrow.html).
+- **An unknown ZIP code is skipped, not fatal.** If the API doesn’t know
+  a ZIP code (“No point found for address”), the other searches carry
+  on, and a warning at the end lists the ZIP codes skipped. The API’s
+  messages are in `attr(nearby, "failures")`; read it straight away,
+  because
+  [`cdc_providers_tidy()`](https://vagishhemmige.github.io/CDCLocator/reference/cdc_providers_tidy.md)
+  and most data-frame operations drop it. Any other error, such as a
+  refused request (HTTP 403) or a gateway error (502 or 504), stops the
+  whole search, because it could hit every other ZIP code too. With a
+  single ZIP code, every error stops the call, as before.
+- **It takes time, on purpose.** Requests are spaced at least one second
+  apart when searching several ZIP codes, to go easy on the API: each
+  ZIP code needs one request per three services, so 30 ZIP codes for
+  every service is 150 requests, about two and a half minutes. Set
+  `min_gap` to change the spacing (it can’t go below half a second). In
+  an interactive session a progress bar shows how far the search has
+  got, and a summary line follows at the end; `progress = FALSE` turns
+  both off.
+- **Stopping loses the results.** Pressing Esc stops the search and
+  discards what was found so far. For a long list, search it in smaller
+  groups and combine them.
