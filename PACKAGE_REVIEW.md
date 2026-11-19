@@ -28,7 +28,7 @@ Start from a public entry point and follow its entire path. At the revision used
 
 | Path | Questions to resolve with evidence |
 | --- | --- |
-| Credentials | Where are credentials read, set and optionally persisted? Exercise cancellation, existing files and errors in a temporary home with dummy values. Inspect whether values appear in output, requests, logs or snapshots and whether unrelated file contents and permissions survive. |
+| Credentials | Where are credentials read, set and optionally persisted? Exercise cancellation, existing files and errors with dummy values. Before calling `install = TRUE`, set `R_ENVIRON_USER` to the absolute path of a disposable `.Renviron` and verify that `.renviron_path()` resolves to that path. Inspect whether values appear in output, requests, logs or snapshots and whether unrelated file contents and permissions survive. |
 | Location and request construction | Trace city/state and point lookups through ZIP-based search. Check character ZIPs with leading zeros, coordinate order and ranges, missing and invalid inputs, service identifiers, endpoints, radius, units and actual search origin. Identify defaults and who supplies them. |
 | Multiple requests | Check service normalization, batch boundaries, rate limits, retries, timeouts, pagination or result caps where documented. What happens when one batch fails after another succeeds? Check cache keys and invalidation if a cache exists. |
 | Provider identity | Establish what one raw row, tidy row and reported count represent. Exercise repeated IDs across batches, the same ID under different services, and different IDs for the same physical site. Trace any deduplication, joins and multi-ZIP examples, including what happens to distance and search origin. |
@@ -41,7 +41,7 @@ For an example intended for research, try to reconstruct the query from its desc
 
 ## 3. Independently exercise the package
 
-Run checks in a disposable copy. Inspect startup files, test helpers, vignette chunks and CI guards before executing. Use a temporary home and temporary R startup files for child processes. Remove inherited CDC_LOCATOR_CLIENT_ID and CDC_LOCATOR_CLIENT_TOKEN and explicitly set CDC_LOCATOR_LIVE_TESTS=false for offline work. Supply dummy credentials only where mocks need them. Keep credential-persistence tests inside the temporary home. Use public example locations or synthetic coordinates.
+Run checks in a disposable copy. Inspect startup files, test helpers, vignette chunks and CI guards before executing. Use a temporary home and temporary R startup files for child processes. Remove inherited CDC_LOCATOR_CLIENT_ID and CDC_LOCATOR_CLIENT_TOKEN and explicitly set CDC_LOCATOR_LIVE_TESTS=false for offline work. Supply dummy credentials only where mocks need them. Point `R_ENVIRON_USER` at the disposable file before any persistence check, including in a child process. Use public example locations or synthetic coordinates.
 
 Build small synthetic HTTP responses with hand-worked expectations. Mock at the request boundary so ordinary construction, parsing, combination and tidying still execute. One useful integration case is a location resolving to a leading-zero ZIP followed by a multi-batch provider search. Vary the second batch between empty, repeated records and failure. Predict row counts, keys, types and error behavior before running. Preserve any serious discrepancy as a minimal rerunnable test or explain exactly what blocks reproduction.
 
@@ -49,7 +49,7 @@ Run focused checks first, then the offline suite, a clean source build, installe
 
 ## 4. Review the site as a user and verify it against the package
 
-The site reviewer owns coverage of the home page, getting started, every article, each exported function’s reference page, indexes, navigation, search, news and every distinct figure. Inventory the published pages as well as README.Rmd/README.md, vignettes/, man/, _pkgdown.yml and figure-generating sources. Reconcile missing, orphaned, duplicated and unintentionally published pages. Inspect Markdown or machine-readable copies when present. For overlapping explanations, specify which page should own the material and where a link suffices.
+The documentation and accessibility reviewer owns coverage of the home page, getting started, every article, each exported function’s reference page, indexes, navigation, search, news and every distinct figure. Inventory the published pages as well as README.Rmd/README.md, vignettes/, man/, _pkgdown.yml and figure-generating sources. Reconcile missing, orphaned, duplicated and unintentionally published pages. Inspect Markdown or machine-readable copies when present. For overlapping explanations, specify which page should own the material and where a link suffices.
 
 ### First-time reader tasks
 
