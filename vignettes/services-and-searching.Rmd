@@ -182,8 +182,8 @@ Some things to know:
   search where it was nearest, and `search_zipcode` says which one that was,
   so `distance` is measured from that ZIP code. To keep a row for every ZIP
   code that found a record, use `distinct = FALSE`; then the same provider
-  can take several rows, so count providers with `unique(nearby$id)`, not
-  `nrow()`.
+  can take several rows, so count providers with
+  `length(unique(nearby$id))`, not `nrow()`.
 - **An unknown ZIP code is skipped, not fatal.** If the API doesn't know a
   ZIP code ("No point found for address"), the other searches carry on, and a
   warning at the end lists the ZIP codes skipped. The API's messages are in
