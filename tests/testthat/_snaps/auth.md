@@ -97,6 +97,37 @@
       Error in `cdc_locator_set_credentials()`:
       ! `install` must be `TRUE` or `FALSE`.
 
+# install = TRUE restores the umask when the file can't be created
+
+    Code
+      withr::with_options(list(warn = 2), cdc_locator_set_credentials(
+        "fake-client-id", "fake-client-token", install = TRUE))
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! Couldn't make a file in '<home>/blocker' readable only by you.
+      i The credentials are set for this session, but nothing was saved.
+      i Add them to '<home>/blocker/.Renviron' yourself, and make it readable only by you.
+
+# install = TRUE keeps the old file if writing the new one fails
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake-client-token", install = TRUE)
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! Couldn't write a new copy of '<home>/.Renviron'.
+      i The credentials are set for this session, but nothing was saved.
+      i Add them to '<home>/.Renviron' yourself, and make it readable only by you.
+
+# install = TRUE keeps the old file if replacing it fails
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake-client-token", install = TRUE)
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! Couldn't replace '<home>/.Renviron'.
+      i The credentials are set for this session, but nothing was saved.
+      i Add them to '<home>/.Renviron' yourself, and make it readable only by you.
+
 # install = TRUE saves nothing if the file can't be protected
 
     Code
