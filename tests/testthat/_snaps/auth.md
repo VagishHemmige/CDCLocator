@@ -67,6 +67,26 @@
       v Locator API credentials set for this R session.
       i Not saved to '<home>/.Renviron'.
 
+# install = TRUE refuses a .Renviron that is a symbolic link
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake-client-token", install = TRUE)
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! '<home>/.Renviron' is a symbolic link, so it can't be updated safely.
+      i Use `install = FALSE`, or add the credentials to the file it points to yourself.
+      i Nothing was set or saved.
+
+# install = TRUE saves nothing if it can't tell whether the file is a link
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake-client-token", install = TRUE)
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! Couldn't check whether '<home>/.Renviron' is a link, so it wasn't updated.
+      i Use `install = FALSE`, or add the credentials to it yourself.
+      i Nothing was set or saved.
+
 # install = TRUE refuses values .Renviron can't hold, before writing
 
     Code
@@ -115,6 +135,57 @@
     Condition
       Error in `cdc_locator_set_credentials()`:
       ! `install` must be `TRUE` or `FALSE`.
+
+# install = TRUE restores the umask when the file can't be created
+
+    Code
+      withr::with_options(list(warn = 2), cdc_locator_set_credentials(
+        "fake-client-id", "fake-client-token", install = TRUE))
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! Couldn't make a file in '<home>/blocker' readable only by you.
+      i The credentials are set for this session, but nothing was saved.
+      i Add them to '<home>/blocker/.Renviron' yourself, and make it readable only by you.
+
+# install = TRUE keeps the old file if writing the new one fails
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake-client-token", install = TRUE)
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! Couldn't write a new copy of '<home>/.Renviron'.
+      i The credentials are set for this session, but nothing was saved.
+      i Add them to '<home>/.Renviron' yourself, and make it readable only by you.
+
+# install = TRUE keeps the old file if closing the new one warns
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake-client-token", install = TRUE)
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! Couldn't write a new copy of '<home>/.Renviron'.
+      i The credentials are set for this session, but nothing was saved.
+      i Add them to '<home>/.Renviron' yourself, and make it readable only by you.
+
+# install = TRUE never removes a file that already had the temporary name
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake-client-token", install = TRUE)
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! Couldn't make a file in '<home>' readable only by you.
+      i The credentials are set for this session, but nothing was saved.
+      i Add them to '<home>/.Renviron' yourself, and make it readable only by you.
+
+# install = TRUE keeps the old file if replacing it fails
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake-client-token", install = TRUE)
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! Couldn't replace '<home>/.Renviron'.
+      i The credentials are set for this session, but nothing was saved.
+      i Add them to '<home>/.Renviron' yourself, and make it readable only by you.
 
 # install = TRUE saves nothing if the file can't be protected
 

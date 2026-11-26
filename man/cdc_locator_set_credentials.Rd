@@ -33,13 +33,18 @@ startup (on Windows, \code{R_USER} if set, then \code{HOME}). Any existing
 \code{CDC_LOCATOR_CLIENT_ID} and \code{CDC_LOCATOR_CLIENT_TOKEN} lines are replaced,
 and every other line is kept. The file is made readable only by you before
 the credentials are written to it; if that isn't possible, nothing is saved.
-(On Windows, files are protected by the permissions of your home folder.)
+(On Windows, this means the file is created with an access control list that
+gives only your account access, which is checked before anything is written.)
 Because it must ask, \code{install = TRUE} only works in an interactive session.
 
 R reads only one user \code{.Renviron} when it starts. If the folder you start R
 in (in RStudio, the project's folder) has its own \code{.Renviron}, R reads that
 file instead of the one in your home folder, so credentials saved there
 don't apply in that project. The function warns you when this is the case.
+
+With \code{install = TRUE}, if the \code{.Renviron} file is a symbolic link, nothing is
+set or saved, because replacing the file would replace the link. Add the
+lines to the file it points to yourself.
 
 Avoid typing the token into a script you might share. Calling this function
 with values read from a password manager, or with
