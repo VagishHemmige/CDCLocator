@@ -234,10 +234,6 @@ cdc_locator_set_credentials <- function(
 
   folder <- dirname(path)
   dir.create(folder, recursive = TRUE, showWarnings = FALSE)
-  # The new file is made inside a staging folder that only this call can have
-  # created: making a folder fails if the name is taken, so no other process
-  # can have put a file there first.
-  staging <- .new_temp_path(folder)
 
   not_saved <- c(
     "i" = "The credentials are set for this session, but nothing was saved.",
@@ -247,14 +243,28 @@ cdc_locator_set_credentials <- function(
     "Couldn't make a file in {.file {folder}} readable only by you.",
     not_saved
   )
-  # The staging folder is removed on exit only once this call has created it,
-  # so anything already there under the same name is never touched.
-  if (!.create_private_folder(staging)) {
+  # The temporary file must be new, so no other process can have made it
+  # first. On Windows, creating it fails if the name is taken. On Unix, it is
+  # made inside a staging folder that only this call can have created, since
+  # making a folder fails if the name is taken. Only what this call created is
+  # removed afterwards: the file, then the staging folder once it is empty,
+  # never anything else inside it.
+  if (.Platform$OS.type == "windows") {
+    temp <- .new_temp_path(folder)
+  } else {
+    staging <- .new_temp_path(folder)
+    if (!.create_private_folder(staging)) {
+      cli::cli_abort(not_private, call = call)
+    }
+    on.exit(.remove_empty_folder(staging), add = TRUE)
+    temp <- file.path(staging, ".Renviron")
+  }
+  if (!.create_private_file(temp)) {
     cli::cli_abort(not_private, call = call)
   }
-  on.exit(unlink(staging, recursive = TRUE), add = TRUE)
-  temp <- file.path(staging, ".Renviron")
-  if (!.create_private_file(temp) || !.protect_file(temp)) {
+  # Runs before the folder's removal, so the folder is empty by then.
+  on.exit(unlink(temp), add = TRUE, after = FALSE)
+  if (!.protect_file(temp)) {
     cli::cli_abort(not_private, call = call)
   }
 
@@ -284,19 +294,37 @@ cdc_locator_set_credentials <- function(
   invisible(path)
 }
 
-# Creates a new folder that only its owner can use, under a umask of 077.
-# Returns FALSE if the name is already taken (by a file or a folder), or if on
-# Unix the folder doesn't come out owner-only.
+# Unix only: creates a new folder that only its owner can use, asking for
+# mode 0700 under a umask of 077. Returns FALSE if the name is already taken
+# (by a file or a folder). A folder's default access list can override both,
+# so if the new folder doesn't come out 0700 it is removed (it is still empty)
+# and FALSE is returned.
 .create_private_folder <- function(path) {
   old_mask <- Sys.umask("077")
   on.exit(Sys.umask(old_mask), add = TRUE)
   created <- tryCatch(
-    dir.create(path, showWarnings = FALSE),
+    dir.create(path, showWarnings = FALSE, mode = "0700"),
     error = function(e) FALSE
   )
-  created &&
-    (.Platform$OS.type == "windows" ||
-      identical(format(file.mode(path)), "700"))
+  if (!created) {
+    return(FALSE)
+  }
+  if (!identical(format(file.mode(path)), "700")) {
+    .remove_empty_folder(path)
+    return(FALSE)
+  }
+  TRUE
+}
+
+# Removes a folder only if it is empty; anything inside is left alone, and so
+# is the folder. (unlink() never removes a folder unless asked to remove its
+# contents too.)
+.remove_empty_folder <- function(path) {
+  empty <- length(list.files(path, all.files = TRUE, no.. = TRUE)) == 0
+  if (dir.exists(path) && empty) {
+    suppressWarnings(file.remove(path))
+  }
+  invisible()
 }
 
 # Creates an empty file that only its owner can read. Returns FALSE instead of
