@@ -428,6 +428,64 @@ test_that("install = TRUE never removes a file that already had the temporary na
   expect_false(file.exists(file.path(home, ".Renviron")))
 })
 
+test_that("install = TRUE never touches a folder that already had the staging name", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  taken <- file.path(home, "someone-elses-folder")
+  dir.create(taken)
+  writeLines("keep me", file.path(taken, ".Renviron"))
+  local_confirm(TRUE)
+  local_mocked_bindings(.new_temp_path = function(folder) taken)
+
+  expect_error(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    "readable only by you"
+  )
+  expect_equal(readLines(file.path(taken, ".Renviron")), "keep me")
+  expect_false(file.exists(file.path(home, ".Renviron")))
+})
+
+test_that("install = TRUE writes inside an owner-only staging folder, then removes it", {
+  skip_on_os("windows")
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  local_confirm(TRUE)
+  seen <- new.env()
+  real_protect <- .protect_file
+  local_mocked_bindings(.protect_file = function(path) {
+    seen$folder <- dirname(path)
+    seen$mode <- format(file.mode(dirname(path)))
+    real_protect(path)
+  })
+
+  suppressMessages(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    )
+  )
+
+  expect_equal(seen$mode, "700")
+  expect_equal(dirname(seen$folder), home)
+  expect_false(dir.exists(seen$folder))
+  expect_equal(list.files(home, all.files = TRUE, no.. = TRUE), ".Renviron")
+})
+
+test_that(".native_path() keeps a link's own name instead of its target", {
+  folder <- withr::local_tempdir()
+  target <- file.path(folder, "target")
+  writeLines("x", target)
+  link <- file.path(folder, "link")
+  skip_if_not(suppressWarnings(file.symlink(target, link)))
+
+  expect_match(.native_path(link), "link$")
+})
+
 test_that("install = TRUE keeps the old file if replacing it fails", {
   home <- local_temp_home()
   withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)

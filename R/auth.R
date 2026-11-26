@@ -234,7 +234,10 @@ cdc_locator_set_credentials <- function(
 
   folder <- dirname(path)
   dir.create(folder, recursive = TRUE, showWarnings = FALSE)
-  temp <- .new_temp_path(folder)
+  # The new file is made inside a staging folder that only this call can have
+  # created: making a folder fails if the name is taken, so no other process
+  # can have put a file there first.
+  staging <- .new_temp_path(folder)
 
   not_saved <- c(
     "i" = "The credentials are set for this session, but nothing was saved.",
@@ -244,13 +247,14 @@ cdc_locator_set_credentials <- function(
     "Couldn't make a file in {.file {folder}} readable only by you.",
     not_saved
   )
-  # The temporary file is removed on exit only once this call has created it,
-  # so a file that was already there under the same name is never touched.
-  if (!.create_private_file(temp)) {
+  # The staging folder is removed on exit only once this call has created it,
+  # so anything already there under the same name is never touched.
+  if (!.create_private_folder(staging)) {
     cli::cli_abort(not_private, call = call)
   }
-  on.exit(unlink(temp), add = TRUE)
-  if (!.protect_file(temp)) {
+  on.exit(unlink(staging, recursive = TRUE), add = TRUE)
+  temp <- file.path(staging, ".Renviron")
+  if (!.create_private_file(temp) || !.protect_file(temp)) {
     cli::cli_abort(not_private, call = call)
   }
 
@@ -278,6 +282,21 @@ cdc_locator_set_credentials <- function(
     )
   }
   invisible(path)
+}
+
+# Creates a new folder that only its owner can use, under a umask of 077.
+# Returns FALSE if the name is already taken (by a file or a folder), or if on
+# Unix the folder doesn't come out owner-only.
+.create_private_folder <- function(path) {
+  old_mask <- Sys.umask("077")
+  on.exit(Sys.umask(old_mask), add = TRUE)
+  created <- tryCatch(
+    dir.create(path, showWarnings = FALSE),
+    error = function(e) FALSE
+  )
+  created &&
+    (.Platform$OS.type == "windows" ||
+      identical(format(file.mode(path)), "700"))
 }
 
 # Creates an empty file that only its owner can read. Returns FALSE instead of
@@ -389,6 +408,14 @@ cdc_locator_set_credentials <- function(
     identical(lines[3], paste0("rule=", sid, ";Allow;FullControl;False"))
 }
 
+# A full path in Windows form for PowerShell. Only the folder is normalized:
+# normalizing the whole path would follow a link to its target, and the link
+# check needs the link itself.
+.native_path <- function(path) {
+  folder <- normalizePath(dirname(path), winslash = "\\", mustWork = FALSE)
+  paste0(folder, "\\", basename(path))
+}
+
 # Runs a fixed PowerShell script with `path` in the CDCLOCATOR_FILE
 # environment variable, and returns its exit status and the non-empty lines it
 # printed. PowerShell that can't be started counts as a failure.
@@ -402,9 +429,7 @@ cdc_locator_set_credentials <- function(
     },
     add = TRUE
   )
-  Sys.setenv(
-    CDCLOCATOR_FILE = normalizePath(path, winslash = "\\", mustWork = FALSE)
-  )
+  Sys.setenv(CDCLOCATOR_FILE = .native_path(path))
   powershell <- file.path(
     Sys.getenv("SystemRoot", "C:/Windows"),
     "System32",
