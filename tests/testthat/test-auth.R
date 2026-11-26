@@ -863,12 +863,10 @@ test_that("install = TRUE saves nothing if the file can't be protected", {
   expect_equal(Sys.getenv("CDC_LOCATOR_CLIENT_ID"), "fake-client-id")
 })
 
-test_that("the default .Renviron is the one R reads at startup", {
-  # A fresh R process, so R works out its home folder from the variables set
-  # here. On Windows, R_USER comes before HOME.
-  skip_on_cran()
-  r_user <- normalizePath(withr::local_tempdir(), winslash = "/")
-  home <- normalizePath(withr::local_tempdir(), winslash = "/")
+# Starts a fresh R process in `dir` that reads the user .Renviron (no
+# --vanilla) but no profiles or saved workspace, and returns which sentinel
+# file it loaded and the path .renviron_path() chooses there.
+startup_renviron <- function(dir) {
   script <- withr::local_tempfile(fileext = ".R")
   writeLines(
     c(
@@ -876,18 +874,91 @@ test_that("the default .Renviron is the one R reads at startup", {
         ".renviron_path <- ",
         paste(deparse(.renviron_path), collapse = "\n")
       ),
-      "cat(.renviron_path())"
+      "cat(Sys.getenv('CDCLOCATOR_SENTINEL'), .renviron_path(), sep = '\\n')"
     ),
     script
   )
-  withr::local_envvar(R_USER = r_user, HOME = home, R_ENVIRON_USER = NA)
-
+  withr::local_dir(dir)
   out <- system2(
     file.path(R.home("bin"), "Rscript"),
-    c("--vanilla", shQuote(script)),
+    c(
+      "--no-save",
+      "--no-restore",
+      "--no-site-file",
+      "--no-init-file",
+      shQuote(script)
+    ),
     stdout = TRUE
   )
+  list(loaded = out[1], path = out[2])
+}
 
-  expected <- if (.Platform$OS.type == "windows") r_user else home
-  expect_equal(out, file.path(expected, ".Renviron"))
+# Folders for a startup test: R_USER and HOME, each with its own sentinel
+# .Renviron, and an empty project folder to start R in. The site environment
+# file is an empty one, so the machine's own (which could set R_ENVIRON_USER)
+# can't change which user file R reads.
+local_startup_folders <- function(env = parent.frame()) {
+  folders <- list(
+    r_user = withr::local_tempdir(.local_envir = env),
+    home = withr::local_tempdir(.local_envir = env),
+    project = withr::local_tempdir(.local_envir = env)
+  )
+  folders <- lapply(folders, normalizePath, winslash = "/")
+  writeLines(
+    "CDCLOCATOR_SENTINEL=r_user",
+    file.path(folders$r_user, ".Renviron")
+  )
+  writeLines("CDCLOCATOR_SENTINEL=home", file.path(folders$home, ".Renviron"))
+  site <- withr::local_tempfile(.local_envir = env)
+  file.create(site)
+  withr::local_envvar(
+    R_ENVIRON = site,
+    R_USER = folders$r_user,
+    HOME = folders$home,
+    R_ENVIRON_USER = NA,
+    CDCLOCATOR_SENTINEL = NA,
+    .local_envir = env
+  )
+  folders
+}
+
+test_that("the default .Renviron is the one R reads at startup", {
+  # On Windows, R finds its home folder from R_USER before HOME.
+  skip_on_cran()
+  folders <- local_startup_folders()
+  expected <- if (.Platform$OS.type == "windows") "r_user" else "home"
+
+  started <- startup_renviron(folders$project)
+
+  expect_equal(started$loaded, expected)
+  expect_equal(started$path, file.path(folders[[expected]], ".Renviron"))
+})
+
+test_that("R_ENVIRON_USER chooses the file R reads and the one saved to", {
+  skip_on_cran()
+  folders <- local_startup_folders()
+  override <- file.path(folders$project, "override.Renviron")
+  writeLines("CDCLOCATOR_SENTINEL=override", override)
+  withr::local_envvar(R_ENVIRON_USER = override)
+
+  started <- startup_renviron(folders$project)
+
+  expect_equal(started$loaded, "override")
+  expect_equal(started$path, override)
+})
+
+test_that("a .Renviron in the starting folder is read instead of the user file", {
+  # The case .warn_local_renviron() warns about: the saved file isn't read.
+  skip_on_cran()
+  folders <- local_startup_folders()
+  writeLines(
+    "CDCLOCATOR_SENTINEL=project",
+    file.path(folders$project, ".Renviron")
+  )
+  expected <- if (.Platform$OS.type == "windows") "r_user" else "home"
+
+  started <- startup_renviron(folders$project)
+
+  expect_equal(started$loaded, "project")
+  expect_equal(started$path, file.path(folders[[expected]], ".Renviron"))
 })
