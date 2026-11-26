@@ -316,6 +316,22 @@ test_that("install = TRUE refuses values .Renviron can't hold, before writing", 
   expect_false(file.exists(file.path(home, ".Renviron")))
 })
 
+test_that("after a refusal, install = FALSE doesn't suggest saving again", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  local_confirm(TRUE)
+
+  expect_snapshot(
+    cdc_locator_set_credentials("fake-client-id", "fake#token", install = TRUE),
+    error = TRUE
+  )
+  expect_snapshot(
+    cdc_locator_set_credentials("fake-client-id", "fake#token")
+  )
+  expect_equal(Sys.getenv("CDC_LOCATOR_CLIENT_TOKEN"), "fake#token")
+  expect_false(file.exists(file.path(home, ".Renviron")))
+})
+
 test_that("install = TRUE refuses line breaks, quotes and #, and shows none of them", {
   home <- local_temp_home()
   withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)

@@ -89,6 +89,25 @@
       i Use `install = FALSE` to set it for this session only.
       i Nothing was set or saved.
 
+# after a refusal, install = FALSE doesn't suggest saving again
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake#token", install = TRUE)
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! `client_token` has characters that can't be saved safely in '.Renviron'.
+      i Only letters, digits and `. _ ~ + / = : -` can be saved this way.
+      i Use `install = FALSE` to set it for this session only.
+      i Nothing was set or saved.
+
+---
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake#token")
+    Message
+      v Locator API credentials set for this R session.
+      i These values can't be saved in '.Renviron', so set them again in each new session.
+
 # install must be TRUE or FALSE
 
     Code

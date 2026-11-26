@@ -135,14 +135,21 @@ cdc_locator_set_credentials <- function(
   )
 
   if (!install) {
-    cli::cli_inform(c(
-      "v" = "Locator API credentials set for this R session.",
-      "i" = paste(
+    # Suggest saving only when the values could be saved.
+    savable <- .is_renviron_safe(client_id) && .is_renviron_safe(client_token)
+    keep <- if (savable) {
+      paste(
         "To keep them for future sessions, run this again with",
         "{.code install = TRUE}, or add {.envvar CDC_LOCATOR_CLIENT_ID} and",
         "{.envvar CDC_LOCATOR_CLIENT_TOKEN} to your {.file .Renviron}",
         "yourself and restart R."
       )
+    } else {
+      "These values can't be saved in {.file .Renviron}, so set them again in each new session."
+    }
+    cli::cli_inform(c(
+      "v" = "Locator API credentials set for this R session.",
+      "i" = keep
     ))
     return(invisible(NULL))
   }
@@ -189,7 +196,7 @@ cdc_locator_set_credentials <- function(
 # without showing them, and the advice is session-only use: quoting by hand
 # can't hold a line break, so it isn't suggested.
 .check_renviron_value <- function(x, arg, call) {
-  if (!grepl("^[A-Za-z0-9._~+/=:-]+$", x)) {
+  if (!.is_renviron_safe(x)) {
     cli::cli_abort(
       c(
         "{.arg {arg}} has characters that can't be saved safely in {.file .Renviron}.",
@@ -201,6 +208,10 @@ cdc_locator_set_credentials <- function(
     )
   }
   invisible(x)
+}
+
+.is_renviron_safe <- function(x) {
+  grepl("^[A-Za-z0-9._~+/=:-]+$", x)
 }
 
 # The user .Renviron R reads at startup when no project file is present:
