@@ -577,6 +577,45 @@ test_that("install = TRUE writes inside an owner-only staging folder, then remov
   expect_equal(list.files(home, all.files = TRUE, no.. = TRUE), ".Renviron")
 })
 
+test_that("install = TRUE removes only its own file from the staging folder", {
+  # Whatever else turns up in the staging folder is left alone, and so is the
+  # folder, rather than deleted with it.
+  skip_on_os("windows")
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  local_confirm(TRUE)
+  seen <- new.env()
+  local_mocked_bindings(.write_lines = function(lines, path) {
+    seen$folder <- dirname(path)
+    writeLines("not mine", file.path(dirname(path), "other"))
+    stop("disk full")
+  })
+
+  expect_error(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    "Couldn't write"
+  )
+  expect_equal(
+    list.files(seen$folder, all.files = TRUE, no.. = TRUE),
+    "other"
+  )
+})
+
+test_that(".remove_empty_folder() removes only an empty folder", {
+  empty <- withr::local_tempdir()
+  .remove_empty_folder(empty)
+  expect_false(dir.exists(empty))
+
+  full <- withr::local_tempdir()
+  writeLines("x", file.path(full, "keep"))
+  .remove_empty_folder(full)
+  expect_true(file.exists(file.path(full, "keep")))
+})
+
 test_that(".native_path() keeps a link's own name instead of its target", {
   folder <- withr::local_tempdir()
   target <- file.path(folder, "target")
