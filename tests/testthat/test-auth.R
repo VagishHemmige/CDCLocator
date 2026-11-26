@@ -508,6 +508,27 @@ test_that("install = TRUE keeps the old file if closing the new one warns", {
   expect_equal(list.files(home, all.files = TRUE, no.. = TRUE), ".Renviron")
 })
 
+test_that("install = TRUE never removes a file that already had the temporary name", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  taken <- file.path(home, "someone-elses-file")
+  writeLines("keep me", taken)
+  local_confirm(TRUE)
+  local_mocked_bindings(.new_temp_path = function(folder) taken)
+
+  expect_snapshot(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    error = TRUE,
+    transform = \(x) gsub(home, "<home>", x, fixed = TRUE)
+  )
+  expect_equal(readLines(taken), "keep me")
+  expect_false(file.exists(file.path(home, ".Renviron")))
+})
+
 test_that("install = TRUE keeps the old file if replacing it fails", {
   home <- local_temp_home()
   withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)

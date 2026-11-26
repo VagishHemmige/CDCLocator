@@ -308,21 +308,24 @@ cdc_locator_set_credentials <- function(
 
   folder <- dirname(path)
   dir.create(folder, recursive = TRUE, showWarnings = FALSE)
-  temp <- tempfile(".Renviron-", tmpdir = folder)
-  on.exit(unlink(temp), add = TRUE)
+  temp <- .new_temp_path(folder)
 
   not_saved <- c(
     "i" = "The credentials are set for this session, but nothing was saved.",
     "i" = "Add them to {.file {path}} yourself, and make it readable only by you."
   )
-  if (!.create_private_file(temp) || !.protect_file(temp)) {
-    cli::cli_abort(
-      c(
-        "Couldn't make a file in {.file {folder}} readable only by you.",
-        not_saved
-      ),
-      call = call
-    )
+  not_private <- c(
+    "Couldn't make a file in {.file {folder}} readable only by you.",
+    not_saved
+  )
+  # The temporary file is removed on exit only once this call has created it,
+  # so a file that was already there under the same name is never touched.
+  if (!.create_private_file(temp)) {
+    cli::cli_abort(not_private, call = call)
+  }
+  on.exit(unlink(temp), add = TRUE)
+  if (!.protect_file(temp)) {
+    cli::cli_abort(not_private, call = call)
   }
 
   # A warning counts as a failure too: a full disk can show up only as a
@@ -352,7 +355,7 @@ cdc_locator_set_credentials <- function(
 }
 
 # Creates an empty file that only its owner can read. Returns FALSE instead of
-# stopping when it fails.
+# stopping when it fails, including when a file of that name already exists.
 .create_private_file <- function(path) {
   if (.Platform$OS.type == "windows") {
     return(.create_private_file_windows(path))
@@ -362,12 +365,17 @@ cdc_locator_set_credentials <- function(
   old_mask <- Sys.umask("077")
   on.exit(Sys.umask(old_mask), add = TRUE)
   tryCatch(
-    file.create(path, showWarnings = FALSE),
+    !file.exists(path) && file.create(path, showWarnings = FALSE),
     error = function(e) FALSE
   )
 }
 
-# Wrappers so tests can make writing or replacing fail.
+# Wrappers so tests can choose the temporary name, or make writing or
+# replacing fail.
+.new_temp_path <- function(folder) {
+  tempfile(".Renviron-", tmpdir = folder)
+}
+
 .write_lines <- function(lines, path) {
   writeLines(lines, path)
 }
