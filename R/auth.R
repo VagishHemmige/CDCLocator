@@ -67,6 +67,10 @@
 #' file instead of the one in your home folder, so credentials saved there
 #' don't apply in that project. The function warns you when this is the case.
 #'
+#' If the `.Renviron` file is a symbolic link, nothing is set or saved, because
+#' replacing the file would replace the link. Add the lines to the file it
+#' points to yourself.
+#'
 #' Avoid typing the token into a script you might share. Calling this function
 #' with values read from a password manager, or with
 #' `rstudioapi::askForPassword()`, keeps them out of your code.
@@ -127,6 +131,7 @@ cdc_locator_set_credentials <- function(
         call = call
       )
     }
+    .check_renviron_target(.renviron_path(), call)
   }
 
   Sys.setenv(
@@ -199,6 +204,25 @@ cdc_locator_set_credentials <- function(
     )
   }
   invisible(x)
+}
+
+# Saving replaces the file by renaming a new one over it, which would turn a
+# symbolic link (say, to a dotfiles repository) into a regular file and leave
+# the file it pointed to unchanged. So a link is refused, without asking.
+.check_renviron_target <- function(path, call) {
+  # Sys.readlink() gives "" for a regular file and NA for a missing one.
+  link <- Sys.readlink(path)
+  if (!is.na(link) && nzchar(link)) {
+    cli::cli_abort(
+      c(
+        "{.file {path}} is a symbolic link, so it can't be updated safely.",
+        "i" = "Use {.code install = FALSE}, or add the credentials to the file it points to yourself.",
+        "i" = "Nothing was set or saved."
+      ),
+      call = call
+    )
+  }
+  invisible(path)
 }
 
 # The user .Renviron R reads at startup when no project file is present:

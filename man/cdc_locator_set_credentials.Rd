@@ -41,6 +41,10 @@ in (in RStudio, the project's folder) has its own \code{.Renviron}, R reads that
 file instead of the one in your home folder, so credentials saved there
 don't apply in that project. The function warns you when this is the case.
 
+If the \code{.Renviron} file is a symbolic link, nothing is set or saved, because
+replacing the file would replace the link. Add the lines to the file it
+points to yourself.
+
 Avoid typing the token into a script you might share. Calling this function
 with values read from a password manager, or with
 \code{rstudioapi::askForPassword()}, keeps them out of your code.

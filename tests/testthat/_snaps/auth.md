@@ -67,6 +67,16 @@
       v Locator API credentials set for this R session.
       i Not saved to '<home>/.Renviron'.
 
+# install = TRUE refuses a .Renviron that is a symbolic link
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake-client-token", install = TRUE)
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! '<home>/.Renviron' is a symbolic link, so it can't be updated safely.
+      i Use `install = FALSE`, or add the credentials to the file it points to yourself.
+      i Nothing was set or saved.
+
 # install = TRUE refuses values .Renviron can't hold, before writing
 
     Code
