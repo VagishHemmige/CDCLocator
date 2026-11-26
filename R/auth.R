@@ -59,7 +59,8 @@
 #' `CDC_LOCATOR_CLIENT_ID` and `CDC_LOCATOR_CLIENT_TOKEN` lines are replaced,
 #' and every other line is kept. The file is made readable only by you before
 #' the credentials are written to it; if that isn't possible, nothing is saved.
-#' (On Windows, files are protected by the permissions of your home folder.)
+#' (On Windows, this means the file is created with an access control list that
+#' gives only your account access, which is checked before anything is written.)
 #' Because it must ask, `install = TRUE` only works in an interactive session.
 #'
 #' R reads only one user `.Renviron` when it starts. If the folder you start R
@@ -317,15 +318,11 @@ cdc_locator_set_credentials <- function(
   temp <- tempfile(".Renviron-", tmpdir = folder)
   on.exit(unlink(temp), add = TRUE)
 
-  old_mask <- Sys.umask("077")
-  created <- file.create(temp)
-  Sys.umask(old_mask)
-
   not_saved <- c(
     "i" = "The credentials are set for this session, but nothing was saved.",
     "i" = "Add them to {.file {path}} yourself, and make it readable only by you."
   )
-  if (!created || !.protect_file(temp)) {
+  if (!.create_private_file(temp) || !.protect_file(temp)) {
     cli::cli_abort(
       c(
         "Couldn't make a file in {.file {folder}} readable only by you.",
@@ -335,8 +332,24 @@ cdc_locator_set_credentials <- function(
     )
   }
 
-  writeLines(lines, temp)
-  if (!file.rename(temp, path)) {
+  # A warning counts as a failure too: a full disk can show up only as a
+  # warning when the file is closed, leaving it incomplete.
+  written <- tryCatch(
+    {
+      .write_lines(lines, temp)
+      TRUE
+    },
+    warning = function(w) FALSE,
+    error = function(e) FALSE
+  )
+  if (!written) {
+    cli::cli_abort(
+      c("Couldn't write a new copy of {.file {path}}.", not_saved),
+      call = call
+    )
+  }
+  replaced <- tryCatch(.replace_file(temp, path), error = function(e) FALSE)
+  if (!replaced) {
     cli::cli_abort(
       c("Couldn't replace {.file {path}}.", not_saved),
       call = call
@@ -345,15 +358,145 @@ cdc_locator_set_credentials <- function(
   invisible(path)
 }
 
+# Creates an empty file that only its owner can read. Returns FALSE instead of
+# stopping when it fails.
+.create_private_file <- function(path) {
+  if (.Platform$OS.type == "windows") {
+    return(.create_private_file_windows(path))
+  }
+  # Under a umask of 077, restored however the create call ends, even when a
+  # warning is turned into an error.
+  old_mask <- Sys.umask("077")
+  on.exit(Sys.umask(old_mask), add = TRUE)
+  tryCatch(
+    file.create(path, showWarnings = FALSE),
+    error = function(e) FALSE
+  )
+}
+
+# Wrappers so tests can make writing or replacing fail.
+.write_lines <- function(lines, path) {
+  writeLines(lines, path)
+}
+
+.replace_file <- function(from, to) {
+  file.rename(from, to)
+}
+
 # Makes a file readable and writable by its owner only, and checks that it
-# worked. Windows protects files through folder permissions instead, and a
-# user's home folder is private by default, so there's nothing to check.
+# worked. On Windows the file was created that way, so this only checks.
 .protect_file <- function(path) {
   if (.Platform$OS.type == "windows") {
-    return(TRUE)
+    return(.protect_file_windows(path))
   }
   Sys.chmod(path, mode = "0600", use_umask = FALSE)
   identical(format(file.mode(path)), "600")
+}
+
+# On Windows, file modes don't decide who can read a file; its access control
+# list does, and a new file normally inherits its folder's list, which may let
+# others read it (for example when R_ENVIRON_USER names a shared folder).
+# Restricting the file after creating it would leave a moment when someone
+# could open it and keep that access. So the file is created with its final
+# list already in place: no inherited entries, and full control for the
+# current user only. It must not already exist. The path is passed to
+# PowerShell as an environment variable, never inside the command, so no
+# character in it can change the command.
+.create_private_file_windows <- function(path) {
+  script <- paste(
+    "$ErrorActionPreference = 'Stop'",
+    "$user = [Security.Principal.WindowsIdentity]::GetCurrent().User",
+    "$security = New-Object Security.AccessControl.FileSecurity",
+    "$security.SetAccessRuleProtection($true, $false)",
+    paste0(
+      "$security.AddAccessRule((New-Object ",
+      "Security.AccessControl.FileSystemAccessRule($user, 'FullControl', 'Allow')))"
+    ),
+    paste0(
+      "$stream = New-Object IO.FileStream($env:CDCLOCATOR_FILE, ",
+      "[IO.FileMode]::CreateNew, ",
+      "[Security.AccessControl.FileSystemRights]::FullControl, ",
+      "[IO.FileShare]::None, 4096, [IO.FileOptions]::None, $security)"
+    ),
+    "$stream.Close()",
+    "'created'",
+    sep = "; "
+  )
+  result <- .run_powershell(script, path)
+  result$status == 0 && identical(result$output, "created")
+}
+
+# Reads a file's access control list back and checks that it is protected (no
+# inherited entries) and gives full control to the current user only.
+.protect_file_windows <- function(path) {
+  script <- paste(
+    "$ErrorActionPreference = 'Stop'",
+    "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value",
+    "(Get-Acl -LiteralPath $env:CDCLOCATOR_FILE).Sddl",
+    sep = "; "
+  )
+  result <- .run_powershell(script, path)
+  result$status == 0 &&
+    length(result$output) == 2 &&
+    grepl("^S-1-[0-9]+(-[0-9]+)+$", result$output[1]) &&
+    .dacl_is_owner_only(result$output[2], result$output[1])
+}
+
+# Whether a security descriptor, in Security Descriptor Definition Language,
+# has a protected list (no inherited entries) whose only entry gives `sid`
+# full control: "D:P(A;;FA;;;<sid>)", possibly with other list flags. Anything
+# else, including a well-known short name in place of the SID, is FALSE.
+.dacl_is_owner_only <- function(sddl, sid) {
+  sddl <- paste(trimws(sddl), collapse = "")
+  dacl <- regmatches(sddl, regexec("D:([A-Z]*)((\\([^)]*\\))*)", sddl))[[1]]
+  length(dacl) >= 3 &&
+    grepl("P", dacl[2], fixed = TRUE) &&
+    identical(dacl[3], paste0("(A;;FA;;;", sid, ")"))
+}
+
+# Runs a fixed PowerShell script with `path` in the CDCLOCATOR_FILE
+# environment variable, and returns its exit status and the non-empty lines it
+# printed. PowerShell that can't be started counts as a failure.
+.run_powershell <- function(script, path) {
+  old <- Sys.getenv("CDCLOCATOR_FILE", unset = NA)
+  on.exit(
+    if (is.na(old)) {
+      Sys.unsetenv("CDCLOCATOR_FILE")
+    } else {
+      Sys.setenv(CDCLOCATOR_FILE = old)
+    },
+    add = TRUE
+  )
+  Sys.setenv(
+    CDCLOCATOR_FILE = normalizePath(path, winslash = "\\", mustWork = FALSE)
+  )
+  powershell <- file.path(
+    Sys.getenv("SystemRoot", "C:/Windows"),
+    "System32",
+    "WindowsPowerShell",
+    "v1.0",
+    "powershell.exe"
+  )
+  output <- tryCatch(
+    suppressWarnings(system2(
+      powershell,
+      c(
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        shQuote(script, type = "cmd")
+      ),
+      stdout = TRUE,
+      stderr = FALSE
+    )),
+    error = function(e) structure(character(), status = 127L)
+  )
+  list(
+    status = attr(output, "status") %||% 0L,
+    output = trimws(output[nzchar(trimws(output))])
+  )
 }
 
 # R reads a .Renviron in the starting folder instead of the user file. Warn

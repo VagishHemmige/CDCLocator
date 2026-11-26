@@ -181,6 +181,7 @@ test_that("install = TRUE writes both lines after a yes, without showing them", 
   )
   expect_no_match(messages, "fake-client")
   expect_match(messages, "Saved", all = FALSE)
+  # Windows is checked by its own test, through the access control list.
   skip_on_os("windows")
   expect_equal(format(file.mode(path)), "600")
 })
@@ -389,6 +390,104 @@ test_that("install must be TRUE or FALSE", {
   )
 })
 
+test_that("install = TRUE restores the umask when the file can't be created", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  # A file where the folder should be, so creating the temporary file fails,
+  # and warnings as errors, so the failure interrupts the create call.
+  writeLines("not a folder", file.path(home, "blocker"))
+  withr::local_envvar(R_ENVIRON_USER = file.path(home, "blocker", ".Renviron"))
+  old_umask <- Sys.umask("022")
+  withr::defer(Sys.umask(old_umask))
+  local_confirm(TRUE)
+
+  expect_snapshot(
+    withr::with_options(
+      list(warn = 2),
+      cdc_locator_set_credentials(
+        "fake-client-id",
+        "fake-client-token",
+        install = TRUE
+      )
+    ),
+    error = TRUE,
+    transform = \(x) gsub(home, "<home>", x, fixed = TRUE)
+  )
+  expect_equal(list.files(home, all.files = TRUE, no.. = TRUE), "blocker")
+  # Windows keeps only part of the umask, so its value isn't compared there.
+  skip_on_os("windows")
+  expect_equal(format(Sys.umask()), "22")
+})
+
+test_that("install = TRUE keeps the old file if writing the new one fails", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  path <- file.path(home, ".Renviron")
+  writeLines("OTHER_KEY=keep-me", path)
+  local_confirm(TRUE)
+  local_mocked_bindings(.write_lines = function(lines, path) {
+    stop("disk full")
+  })
+
+  expect_snapshot(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    error = TRUE,
+    transform = \(x) gsub(home, "<home>", x, fixed = TRUE)
+  )
+  expect_equal(readLines(path), "OTHER_KEY=keep-me")
+  expect_equal(list.files(home, all.files = TRUE, no.. = TRUE), ".Renviron")
+})
+
+test_that("install = TRUE keeps the old file if closing the new one warns", {
+  # A full disk can surface only when the file is closed, as a warning.
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  path <- file.path(home, ".Renviron")
+  writeLines(c("OTHER_KEY=keep-me", "LAST=also-kept"), path)
+  local_confirm(TRUE)
+  local_mocked_bindings(.write_lines = function(lines, path) {
+    writeLines(lines[1], path)
+    warning("problem closing connection")
+  })
+
+  expect_snapshot(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    error = TRUE,
+    transform = \(x) gsub(home, "<home>", x, fixed = TRUE)
+  )
+  expect_equal(readLines(path), c("OTHER_KEY=keep-me", "LAST=also-kept"))
+  expect_equal(list.files(home, all.files = TRUE, no.. = TRUE), ".Renviron")
+})
+
+test_that("install = TRUE keeps the old file if replacing it fails", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  path <- file.path(home, ".Renviron")
+  writeLines("OTHER_KEY=keep-me", path)
+  local_confirm(TRUE)
+  local_mocked_bindings(.replace_file = function(from, to) FALSE)
+
+  expect_snapshot(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    error = TRUE,
+    transform = \(x) gsub(home, "<home>", x, fixed = TRUE)
+  )
+  expect_equal(readLines(path), "OTHER_KEY=keep-me")
+  expect_equal(list.files(home, all.files = TRUE, no.. = TRUE), ".Renviron")
+})
+
 test_that("install = TRUE makes an existing readable .Renviron owner-only", {
   skip_on_os("windows")
   home <- local_temp_home()
@@ -408,6 +507,163 @@ test_that("install = TRUE makes an existing readable .Renviron owner-only", {
 
   expect_equal(format(file.mode(path)), "600")
   expect_equal(readLines(path)[1], "OTHER_KEY=keep-me")
+})
+
+# On Windows: a temporary folder everyone can read, as a shared folder named by
+# R_ENVIRON_USER might be. `name` is the folder's name inside the temporary
+# folder.
+local_everyone_reads_folder <- function(name = "shared", env = parent.frame()) {
+  folder <- file.path(withr::local_tempdir(.local_envir = env), name)
+  dir.create(folder)
+  icacls <- file.path(Sys.getenv("SystemRoot"), "System32", "icacls.exe")
+  status <- system2(
+    icacls,
+    c(shQuote(folder, type = "cmd"), "/grant", "*S-1-1-0:(OI)(CI)R"),
+    stdout = FALSE
+  )
+  if (!identical(as.integer(status), 0L)) {
+    skip("Couldn't let everyone read the test folder.")
+  }
+  normalizePath(folder, winslash = "/")
+}
+
+# On Windows: the current user's SID and a file's security descriptor, read
+# with PowerShell independently of the package's helpers.
+read_acl <- function(path) {
+  withr::local_envvar(CHECK_FILE = normalizePath(path, winslash = "\\"))
+  script <- paste(
+    "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value",
+    "(Get-Acl -LiteralPath $env:CHECK_FILE).Sddl",
+    sep = "; "
+  )
+  out <- system2(
+    "powershell",
+    c("-NoProfile", "-Command", shQuote(script, type = "cmd")),
+    stdout = TRUE
+  )
+  out <- trimws(out[nzchar(trimws(out))])
+  list(sid = out[1], sddl = out[2])
+}
+
+test_that(".create_private_file() on Windows makes a file only its owner can open", {
+  skip_on_os(c("mac", "linux", "solaris"))
+  skip_on_cran()
+  folder <- local_everyone_reads_folder()
+  path <- file.path(folder, ".Renviron-test")
+
+  expect_true(.create_private_file(path))
+  expect_true(file.exists(path))
+  acl <- read_acl(path)
+  expect_match(acl$sid, "^S-1-[0-9]+(-[0-9]+)+$")
+  expect_match(acl$sddl, paste0("D:P[A-Z]*\\(A;;FA;;;", acl$sid, "\\)($|S:)"))
+  expect_true(.protect_file(path))
+  # It never reuses a file that already exists.
+  expect_false(.create_private_file(path))
+})
+
+test_that(".create_private_file() on Windows copes with quotes in the path", {
+  skip_on_os(c("mac", "linux", "solaris"))
+  skip_on_cran()
+  folder <- local_everyone_reads_folder("O\u2019Brien's files")
+  path <- file.path(folder, ".Renviron-test")
+
+  expect_true(.create_private_file(path))
+  expect_true(.protect_file(path))
+})
+
+test_that("install = TRUE on Windows gives only the current user access", {
+  skip_on_os(c("mac", "linux", "solaris"))
+  skip_on_cran()
+  folder <- local_everyone_reads_folder()
+  path <- file.path(folder, ".Renviron")
+  withr::local_envvar(
+    R_ENVIRON_USER = path,
+    CDC_LOCATOR_CLIENT_ID = NA,
+    CDC_LOCATOR_CLIENT_TOKEN = NA
+  )
+  writeLines("OTHER_KEY=keep-me", path)
+  local_confirm(TRUE)
+
+  suppressMessages(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    )
+  )
+
+  acl <- read_acl(path)
+  expect_match(acl$sddl, paste0("D:P[A-Z]*\\(A;;FA;;;", acl$sid, "\\)($|S:)"))
+  expect_equal(readLines(path)[1], "OTHER_KEY=keep-me")
+  expect_equal(list.files(folder, all.files = TRUE, no.. = TRUE), ".Renviron")
+})
+
+test_that("the Windows helpers pass the path to PowerShell only as data", {
+  scripts <- character()
+  local_mocked_bindings(.run_powershell = function(script, path) {
+    scripts <<- c(scripts, script)
+    list(status = 0L, output = "created")
+  })
+
+  .create_private_file_windows("C:/Users/O\u2019Brien/.Renviron-1")
+  .protect_file_windows("C:/Users/O\u2019Brien/.Renviron-1")
+
+  expect_length(scripts, 2)
+  expect_no_match(scripts, "Brien", fixed = TRUE)
+  expect_match(scripts, "$env:CDCLOCATOR_FILE", fixed = TRUE)
+  expect_match(scripts[1], "CreateNew", fixed = TRUE)
+})
+
+test_that(".protect_file_windows() needs the one owner-only entry", {
+  sid <- "S-1-5-21-1-2-3-1001"
+  answer <- list(
+    status = 0L,
+    output = c(sid, paste0("O:", sid, "G:", sid, "D:P(A;;FA;;;", sid, ")"))
+  )
+  local_mocked_bindings(.run_powershell = function(script, path) answer)
+  expect_true(.protect_file_windows("C:/x"))
+
+  answer$output[2] <- paste0("D:P(A;;FA;;;", sid, ")(A;;FR;;;WD)")
+  expect_false(.protect_file_windows("C:/x"))
+
+  answer$output[2] <- "D:P(A;;FA;;;S-1-5-21-9-9-9-500)"
+  expect_false(.protect_file_windows("C:/x"))
+
+  answer <- list(status = 1L, output = character())
+  expect_false(.protect_file_windows("C:/x"))
+})
+
+test_that(".create_private_file_windows() fails when PowerShell does", {
+  answer <- list(status = 1L, output = character())
+  local_mocked_bindings(.run_powershell = function(script, path) answer)
+  expect_false(.create_private_file_windows("C:/x"))
+
+  answer <- list(status = 0L, output = "something else")
+  expect_false(.create_private_file_windows("C:/x"))
+})
+
+test_that(".dacl_is_owner_only() accepts only a protected, single-entry list", {
+  sid <- "S-1-5-21-1-2-3-1001"
+  owner <- paste0("O:", sid, "G:", sid)
+  ace <- paste0("(A;;FA;;;", sid, ")")
+
+  expect_true(.dacl_is_owner_only(paste0(owner, "D:P", ace), sid))
+  expect_true(.dacl_is_owner_only(paste0(owner, "D:PAI", ace, "S:AI"), sid))
+  # Not protected, so entries can still be inherited.
+  expect_false(.dacl_is_owner_only(paste0(owner, "D:", ace), sid))
+  # Everyone can also read.
+  expect_false(
+    .dacl_is_owner_only(paste0(owner, "D:P", ace, "(A;;FR;;;WD)"), sid)
+  )
+  # An inherited entry, read-only access, another account, no list at all.
+  expect_false(
+    .dacl_is_owner_only(paste0(owner, "D:P(A;ID;FA;;;", sid, ")"), sid)
+  )
+  expect_false(
+    .dacl_is_owner_only(paste0(owner, "D:P(A;;FR;;;", sid, ")"), sid)
+  )
+  expect_false(.dacl_is_owner_only(paste0(owner, "D:P(A;;FA;;;LA)"), sid))
+  expect_false(.dacl_is_owner_only(owner, sid))
 })
 
 test_that("install = TRUE saves nothing if the file can't be protected", {
