@@ -449,17 +449,78 @@ test_that("install = TRUE makes an existing readable .Renviron owner-only", {
   expect_equal(readLines(path)[1], "OTHER_KEY=keep-me")
 })
 
-test_that("install = TRUE on Windows gives only the current user access", {
-  # The folder lets everyone read, as a shared folder named by R_ENVIRON_USER
-  # might, and so does the existing file.
+# On Windows: a temporary folder everyone can read, as a shared folder named by
+# R_ENVIRON_USER might be. `name` is the folder's name inside the temporary
+# folder.
+local_everyone_reads_folder <- function(name = "shared", env = parent.frame()) {
+  folder <- file.path(withr::local_tempdir(.local_envir = env), name)
+  dir.create(folder)
+  icacls <- file.path(Sys.getenv("SystemRoot"), "System32", "icacls.exe")
+  status <- system2(
+    icacls,
+    c(shQuote(folder, type = "cmd"), "/grant", "*S-1-1-0:(OI)(CI)R"),
+    stdout = FALSE
+  )
+  if (!identical(as.integer(status), 0L)) {
+    skip("Couldn't let everyone read the test folder.")
+  }
+  normalizePath(folder, winslash = "/")
+}
+
+# On Windows: the current user's SID and a file's security descriptor, read
+# with PowerShell independently of the package's helpers.
+read_acl <- function(path) {
+  withr::local_envvar(CHECK_FILE = normalizePath(path, winslash = "\\"))
+  script <- paste(
+    "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value",
+    "(Get-Acl -LiteralPath $env:CHECK_FILE).Sddl",
+    sep = "; "
+  )
+  out <- system2(
+    "powershell",
+    c("-NoProfile", "-Command", shQuote(script, type = "cmd")),
+    stdout = TRUE
+  )
+  out <- trimws(out[nzchar(trimws(out))])
+  list(sid = out[1], sddl = out[2])
+}
+
+test_that(".create_private_file() on Windows makes a file only its owner can open", {
   skip_on_os(c("mac", "linux", "solaris"))
   skip_on_cran()
-  home <- local_temp_home()
-  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
-  icacls <- file.path(Sys.getenv("SystemRoot"), "System32", "icacls.exe")
-  everyone_reads <- "*S-1-1-0:(OI)(CI)R"
-  system2(icacls, c(shQuote(home, type = "cmd"), "/grant", everyone_reads))
-  path <- file.path(home, ".Renviron")
+  folder <- local_everyone_reads_folder()
+  path <- file.path(folder, ".Renviron-test")
+
+  expect_true(.create_private_file(path))
+  expect_true(file.exists(path))
+  acl <- read_acl(path)
+  expect_match(acl$sid, "^S-1-[0-9]+(-[0-9]+)+$")
+  expect_match(acl$sddl, paste0("D:P[A-Z]*\\(A;;FA;;;", acl$sid, "\\)($|S:)"))
+  expect_true(.protect_file(path))
+  # It never reuses a file that already exists.
+  expect_false(.create_private_file(path))
+})
+
+test_that(".create_private_file() on Windows copes with quotes in the path", {
+  skip_on_os(c("mac", "linux", "solaris"))
+  skip_on_cran()
+  folder <- local_everyone_reads_folder("O\u2019Brien's files")
+  path <- file.path(folder, ".Renviron-test")
+
+  expect_true(.create_private_file(path))
+  expect_true(.protect_file(path))
+})
+
+test_that("install = TRUE on Windows gives only the current user access", {
+  skip_on_os(c("mac", "linux", "solaris"))
+  skip_on_cran()
+  folder <- local_everyone_reads_folder()
+  path <- file.path(folder, ".Renviron")
+  withr::local_envvar(
+    R_ENVIRON_USER = path,
+    CDC_LOCATOR_CLIENT_ID = NA,
+    CDC_LOCATOR_CLIENT_TOKEN = NA
+  )
   writeLines("OTHER_KEY=keep-me", path)
   local_confirm(TRUE)
 
@@ -471,71 +532,54 @@ test_that("install = TRUE on Windows gives only the current user access", {
     )
   )
 
-  sid <- .parse_whoami_sid(
-    system2("whoami", c("/user", "/fo", "csv", "/nh"), stdout = TRUE)
-  )
-  sddl <- system2(
-    "powershell",
-    c(
-      "-NoProfile",
-      "-Command",
-      shQuote(paste0("(Get-Acl -LiteralPath '", path, "').Sddl"), type = "cmd")
-    ),
-    stdout = TRUE
-  )
-  expect_match(sddl, paste0("D:P[A-Z]*\\(A;;FA;;;", sid, "\\)($|S:)"))
+  acl <- read_acl(path)
+  expect_match(acl$sddl, paste0("D:P[A-Z]*\\(A;;FA;;;", acl$sid, "\\)($|S:)"))
   expect_equal(readLines(path)[1], "OTHER_KEY=keep-me")
-  expect_equal(list.files(home, all.files = TRUE, no.. = TRUE), ".Renviron")
+  expect_equal(list.files(folder, all.files = TRUE, no.. = TRUE), ".Renviron")
 })
 
-test_that(".protect_file_windows() restricts by SID and checks the result", {
-  sid <- "S-1-5-21-1-2-3-1001"
-  calls <- list()
-  answers <- list(
-    whoami = list(status = 0L, output = paste0('"pc\\fake","', sid, '"')),
-    icacls = list(status = 0L, output = "processed"),
-    powershell = list(
-      status = 0L,
-      output = paste0("O:", sid, "G:", sid, "D:P(A;;FA;;;", sid, ")")
-    )
-  )
-  local_mocked_bindings(.run_command = function(command, args) {
-    program <- sub("\\.exe$", "", basename(command))
-    calls[[program]] <<- args
-    answers[[program]]
+test_that("the Windows helpers pass the path to PowerShell only as data", {
+  scripts <- character()
+  local_mocked_bindings(.run_powershell = function(script, path) {
+    scripts <<- c(scripts, script)
+    list(status = 0L, output = "created")
   })
 
-  expect_true(.protect_file_windows("C:/Users/fake/.Renviron-1"))
-  expect_contains(
-    calls$icacls,
-    c("/inheritance:r", "/grant:r", paste0("*", sid, ":F"))
-  )
+  .create_private_file_windows("C:/Users/O\u2019Brien/.Renviron-1")
+  .protect_file_windows("C:/Users/O\u2019Brien/.Renviron-1")
 
-  answers$powershell$output <- paste0(
-    "D:P(A;;FA;;;", sid, ")(A;;FR;;;WD)"
-  )
-  expect_false(.protect_file_windows("C:/Users/fake/.Renviron-1"))
-
-  answers$icacls$status <- 5L
-  expect_false(.protect_file_windows("C:/Users/fake/.Renviron-1"))
-
-  calls <- list()
-  answers$whoami$status <- 1L
-  expect_false(.protect_file_windows("C:/Users/fake/.Renviron-1"))
-  expect_null(calls$icacls)
+  expect_length(scripts, 2)
+  expect_no_match(scripts, "Brien", fixed = TRUE)
+  expect_match(scripts, "$env:CDCLOCATOR_FILE", fixed = TRUE)
+  expect_match(scripts[1], "CreateNew", fixed = TRUE)
 })
 
-test_that(".parse_whoami_sid() reads one SID or gives NA", {
-  expect_equal(
-    .parse_whoami_sid(c('"pc\\fake user","S-1-5-21-11-22-33-1001"', "")),
-    "S-1-5-21-11-22-33-1001"
+test_that(".protect_file_windows() needs the one owner-only entry", {
+  sid <- "S-1-5-21-1-2-3-1001"
+  answer <- list(
+    status = 0L,
+    output = c(sid, paste0("O:", sid, "G:", sid, "D:P(A;;FA;;;", sid, ")"))
   )
-  expect_equal(.parse_whoami_sid(character()), NA_character_)
-  expect_equal(.parse_whoami_sid('"pc\\fake","not a sid"'), NA_character_)
-  expect_equal(
-    .parse_whoami_sid(c('"a","S-1-5-21-1-2-3-4"', '"b","S-1-5-21-1-2-3-5"')),
-    NA_character_
-  )
+  local_mocked_bindings(.run_powershell = function(script, path) answer)
+  expect_true(.protect_file_windows("C:/x"))
+
+  answer$output[2] <- paste0("D:P(A;;FA;;;", sid, ")(A;;FR;;;WD)")
+  expect_false(.protect_file_windows("C:/x"))
+
+  answer$output[2] <- "D:P(A;;FA;;;S-1-5-21-9-9-9-500)"
+  expect_false(.protect_file_windows("C:/x"))
+
+  answer <- list(status = 1L, output = character())
+  expect_false(.protect_file_windows("C:/x"))
+})
+
+test_that(".create_private_file_windows() fails when PowerShell does", {
+  answer <- list(status = 1L, output = character())
+  local_mocked_bindings(.run_powershell = function(script, path) answer)
+  expect_false(.create_private_file_windows("C:/x"))
+
+  answer <- list(status = 0L, output = "something else")
+  expect_false(.create_private_file_windows("C:/x"))
 })
 
 test_that(".dacl_is_owner_only() accepts only a protected, single-entry list", {
