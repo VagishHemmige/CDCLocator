@@ -606,6 +606,9 @@ test_that("install = TRUE removes only its own file from the staging folder", {
 })
 
 test_that(".remove_empty_folder() removes only an empty folder", {
+  # Unix only, as its one caller is: on Windows file.remove() can't remove a
+  # folder.
+  skip_on_os("windows")
   empty <- withr::local_tempdir()
   .remove_empty_folder(empty)
   expect_false(dir.exists(empty))
