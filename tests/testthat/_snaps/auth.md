@@ -75,7 +75,7 @@
       Error in `cdc_locator_set_credentials()`:
       ! `client_id` has characters that can't be saved safely in '.Renviron'.
       i Only letters, digits and `. _ ~ + / = : -` can be saved this way.
-      i Use `install = FALSE` and add it to '.Renviron' yourself, in quotes.
+      i Use `install = FALSE` to set it for this session only.
       i Nothing was set or saved.
 
 ---
@@ -86,7 +86,7 @@
       Error in `cdc_locator_set_credentials()`:
       ! `client_token` has characters that can't be saved safely in '.Renviron'.
       i Only letters, digits and `. _ ~ + / = : -` can be saved this way.
-      i Use `install = FALSE` and add it to '.Renviron' yourself, in quotes.
+      i Use `install = FALSE` to set it for this session only.
       i Nothing was set or saved.
 
 # install must be TRUE or FALSE

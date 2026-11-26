@@ -48,10 +48,10 @@ console instead. Nothing was set or saved.
 
 ### "has characters that can't be saved safely in .Renviron"
 
-`.Renviron` treats spaces, quotes, `#` and `$` specially, so
-`install = TRUE` only saves plain values. Use `install = FALSE` for this
-session, and add the line to `.Renviron` yourself with the value in quotes.
-Nothing was set or saved.
+`.Renviron` treats spaces, quotes, `#` and `$` specially, and a line break
+would split the line, so `install = TRUE` only saves plain values. Use
+`install = FALSE` to set the credentials for this session only, and run it
+again in each new session. Nothing was set or saved.
 
 ### A warning that "this folder has its own .Renviron"
 

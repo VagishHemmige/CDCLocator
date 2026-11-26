@@ -184,15 +184,17 @@ cdc_locator_set_credentials <- function(
   invisible(x)
 }
 
-# `.Renviron` treats spaces, quotes, `#` and `$` specially, so only plain
-# values are written. Others are refused without showing them.
+# `.Renviron` treats spaces, quotes, `#` and `$` specially, and a line break
+# would split the line, so only plain values are written. Others are refused
+# without showing them, and the advice is session-only use: quoting by hand
+# can't hold a line break, so it isn't suggested.
 .check_renviron_value <- function(x, arg, call) {
   if (!grepl("^[A-Za-z0-9._~+/=:-]+$", x)) {
     cli::cli_abort(
       c(
         "{.arg {arg}} has characters that can't be saved safely in {.file .Renviron}.",
         "i" = "Only letters, digits and {.code . _ ~ + / = : -} can be saved this way.",
-        "i" = "Use {.code install = FALSE} and add it to {.file .Renviron} yourself, in quotes.",
+        "i" = "Use {.code install = FALSE} to set it for this session only.",
         "i" = "Nothing was set or saved."
       ),
       call = call
