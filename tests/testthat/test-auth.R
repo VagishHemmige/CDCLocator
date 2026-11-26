@@ -330,6 +330,104 @@ test_that("install must be TRUE or FALSE", {
   )
 })
 
+test_that("install = TRUE restores the umask when the file can't be created", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  # A file where the folder should be, so creating the temporary file fails,
+  # and warnings as errors, so the failure interrupts the create call.
+  writeLines("not a folder", file.path(home, "blocker"))
+  withr::local_envvar(R_ENVIRON_USER = file.path(home, "blocker", ".Renviron"))
+  old_umask <- Sys.umask("022")
+  withr::defer(Sys.umask(old_umask))
+  local_confirm(TRUE)
+
+  expect_snapshot(
+    withr::with_options(
+      list(warn = 2),
+      cdc_locator_set_credentials(
+        "fake-client-id",
+        "fake-client-token",
+        install = TRUE
+      )
+    ),
+    error = TRUE,
+    transform = \(x) gsub(home, "<home>", x, fixed = TRUE)
+  )
+  expect_equal(list.files(home, all.files = TRUE, no.. = TRUE), "blocker")
+  # Windows keeps only part of the umask, so its value isn't compared there.
+  skip_on_os("windows")
+  expect_equal(format(Sys.umask()), "22")
+})
+
+test_that("install = TRUE keeps the old file if writing the new one fails", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  path <- file.path(home, ".Renviron")
+  writeLines("OTHER_KEY=keep-me", path)
+  local_confirm(TRUE)
+  local_mocked_bindings(.write_lines = function(lines, path) {
+    stop("disk full")
+  })
+
+  expect_snapshot(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    error = TRUE,
+    transform = \(x) gsub(home, "<home>", x, fixed = TRUE)
+  )
+  expect_equal(readLines(path), "OTHER_KEY=keep-me")
+  expect_equal(list.files(home, all.files = TRUE, no.. = TRUE), ".Renviron")
+})
+
+test_that("install = TRUE keeps the old file if closing the new one warns", {
+  # A full disk can surface only when the file is closed, as a warning.
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  path <- file.path(home, ".Renviron")
+  writeLines(c("OTHER_KEY=keep-me", "LAST=also-kept"), path)
+  local_confirm(TRUE)
+  local_mocked_bindings(.write_lines = function(lines, path) {
+    writeLines(lines[1], path)
+    warning("problem closing connection")
+  })
+
+  expect_snapshot(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    error = TRUE,
+    transform = \(x) gsub(home, "<home>", x, fixed = TRUE)
+  )
+  expect_equal(readLines(path), c("OTHER_KEY=keep-me", "LAST=also-kept"))
+  expect_equal(list.files(home, all.files = TRUE, no.. = TRUE), ".Renviron")
+})
+
+test_that("install = TRUE keeps the old file if replacing it fails", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  path <- file.path(home, ".Renviron")
+  writeLines("OTHER_KEY=keep-me", path)
+  local_confirm(TRUE)
+  local_mocked_bindings(.replace_file = function(from, to) FALSE)
+
+  expect_snapshot(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    error = TRUE,
+    transform = \(x) gsub(home, "<home>", x, fixed = TRUE)
+  )
+  expect_equal(readLines(path), "OTHER_KEY=keep-me")
+  expect_equal(list.files(home, all.files = TRUE, no.. = TRUE), ".Renviron")
+})
+
 test_that("install = TRUE makes an existing readable .Renviron owner-only", {
   skip_on_os("windows")
   home <- local_temp_home()
