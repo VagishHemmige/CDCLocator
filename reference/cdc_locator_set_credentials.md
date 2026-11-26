@@ -53,8 +53,7 @@ this is the case.
 
 Avoid typing the token into a script you might share. Calling this
 function with values read from a password manager, or with
-[`rstudioapi::askForPassword()`](https://rstudio.github.io/rstudioapi/reference/askForPassword.html),
-keeps them out of your code.
+`rstudioapi::askForPassword()`, keeps them out of your code.
 
 ## Examples
 

@@ -101,11 +101,10 @@ file are missing in that project. Either add the two lines to the
 project’s file too, or keep them only in the home file and don’t give
 the project its own.
 
-[`usethis::edit_r_environ()`](https://usethis.r-lib.org/reference/edit.html)
-opens the home file, and `usethis::edit_r_environ(scope = "project")`
-opens the project’s. If you use a project file, add `.Renviron` to the
-project’s `.gitignore` so it is never committed. To work out which file
-R would have read, check:
+`usethis::edit_r_environ()` opens the home file, and
+`usethis::edit_r_environ(scope = "project")` opens the project’s. If you
+use a project file, add `.Renviron` to the project’s `.gitignore` so it
+is never committed. To work out which file R would have read, check:
 
 ``` r
 
@@ -134,8 +133,7 @@ cdc_locator_set_credentials(
 
 Typing the token into a script puts it wherever the script goes. To
 avoid that, read it at run time instead, for example with
-[`rstudioapi::askForPassword()`](https://rstudio.github.io/rstudioapi/reference/askForPassword.html)
-or the keyring package:
+`rstudioapi::askForPassword()` or the keyring package:
 
 ``` r
 

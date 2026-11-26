@@ -47,9 +47,8 @@ cdc_locator_set_credentials(
 )
 ```
 
-Or open the file with
-[`usethis::edit_r_environ()`](https://usethis.r-lib.org/reference/edit.html),
-add these two lines with your own values, save, and restart R:
+Or open the file with `usethis::edit_r_environ()`, add these two lines
+with your own values, save, and restart R:
 
     CDC_LOCATOR_CLIENT_ID=your-client-id
     CDC_LOCATOR_CLIENT_TOKEN=your-client-token
