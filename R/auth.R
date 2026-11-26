@@ -246,41 +246,34 @@ cdc_locator_set_credentials <- function(
   !is.na(link) && nzchar(link)
 }
 
-# Sys.readlink() always gives "" on Windows, so ask PowerShell whether the
-# path is a reparse point (a symbolic link or junction).
+# Sys.readlink() always gives "" on Windows, so ask Windows for the path's own
+# attributes (not those of anything it points to): a reparse point is a
+# symbolic link or junction. Only "not found" counts as missing; any other
+# failure, such as access denied, gives NA.
 .is_windows_link <- function(path) {
-  powershell <- file.path(
-    Sys.getenv("SystemRoot", "C:/Windows"),
-    "System32",
-    "WindowsPowerShell",
-    "v1.0",
-    "powershell.exe"
+  script <- paste(
+    "$ErrorActionPreference = 'Stop'",
+    paste0(
+      "try { $attributes = [IO.File]::GetAttributes($env:CDCLOCATOR_FILE) } ",
+      "catch [IO.FileNotFoundException], [IO.DirectoryNotFoundException] ",
+      "{ 'missing'; exit 0 }"
+    ),
+    paste0(
+      "if ($attributes -band [IO.FileAttributes]::ReparsePoint) ",
+      "{ 'link' } else { 'file' }"
+    ),
+    sep = "; "
   )
-  script <- paste0(
-    "$i = Get-Item -LiteralPath '",
-    gsub("'", "''", path, fixed = TRUE),
-    "' -Force -ErrorAction SilentlyContinue; ",
-    "if (-not $i) { 'missing' } ",
-    "elseif ($i.Attributes -band [IO.FileAttributes]::ReparsePoint) { 'link' } ",
-    "else { 'file' }"
-  )
-  output <- tryCatch(
-    suppressWarnings(system2(
-      powershell,
-      c("-NoProfile", "-NonInteractive", "-Command", shQuote(script, "cmd")),
-      stdout = TRUE,
-      stderr = FALSE
-    )),
-    error = function(e) character()
-  )
-  answer <- trimws(output[nzchar(trimws(output))])
-  if (identical(answer, "link")) {
-    TRUE
-  } else if (identical(answer, "file") || identical(answer, "missing")) {
-    FALSE
-  } else {
-    NA
+  .link_answer(.run_powershell(script, path))
+}
+
+# Turns the PowerShell answer into TRUE (a link), FALSE (a file or nothing),
+# or NA (anything else, including a failed run).
+.link_answer <- function(result) {
+  if (result$status != 0 || length(result$output) != 1) {
+    return(NA)
   }
+  switch(result$output, link = TRUE, file = FALSE, missing = FALSE, NA)
 }
 
 # The user .Renviron R reads at startup when no project file is present:
