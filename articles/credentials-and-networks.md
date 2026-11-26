@@ -53,10 +53,10 @@ saves to `.Renviron` in your home folder, or to the file
 `R_ENVIRON_USER` names if you’ve set that. It replaces any
 `CDC_LOCATOR_*` lines already there and keeps everything else. Before
 writing anything secret, it makes the file readable only by you, and if
-it can’t, it saves nothing. On Windows, the permissions of your home
-folder protect it. It also sets the credentials for the current session,
-so you don’t need to restart R. If the current folder has its own
-`.Renviron`, it warns you, for the reason explained under “Which
+it can’t, it saves nothing. On Windows, it does this by giving only your
+account access to the file. It also sets the credentials for the current
+session, so you don’t need to restart R. If the current folder has its
+own `.Renviron`, it warns you, for the reason explained under “Which
 `.Renviron` R reads” below.
 
 `install = TRUE` only saves plain values: letters, digits and

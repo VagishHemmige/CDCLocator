@@ -58,6 +58,14 @@ These start with `HTTP` and a status code. When the API sent an
 explanation, the error adds it after “The API said:”, with your
 credentials removed.
 
+### “is a symbolic link, so it can’t be updated safely”
+
+Your `.Renviron` is a link to another file, for example one kept with
+your other settings. Saving would replace the link with a plain file, so
+`install = TRUE` stops instead. Use `install = FALSE` for this session,
+or add the two lines to the file the link points to yourself. Nothing
+was set or saved.
+
 ### HTTP 403 Forbidden
 
 The API refused the request. There are two usual causes, and the error

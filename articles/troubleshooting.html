@@ -133,6 +133,15 @@ well, or remove it.</p>
 sent an explanation, the error adds it after “The API said:”, with your
 credentials removed.</p>
 <div class="section level3">
+<h3 id="is-a-symbolic-link-so-it-cant-be-updated-safely">“is a symbolic link, so it can’t be updated safely”<a class="anchor" aria-label="anchor" href="#is-a-symbolic-link-so-it-cant-be-updated-safely"></a>
+</h3>
+<p>Your <code>.Renviron</code> is a link to another file, for example
+one kept with your other settings. Saving would replace the link with a
+plain file, so <code>install = TRUE</code> stops instead. Use
+<code>install = FALSE</code> for this session, or add the two lines to
+the file the link points to yourself. Nothing was set or saved.</p>
+</div>
+<div class="section level3">
 <h3 id="http-403-forbidden">HTTP 403 Forbidden<a class="anchor" aria-label="anchor" href="#http-403-forbidden"></a>
 </h3>
 <p>The API refused the request. There are two usual causes, and the
