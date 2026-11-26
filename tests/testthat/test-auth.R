@@ -247,6 +247,107 @@ test_that("install = TRUE uses R_ENVIRON_USER when it names a file", {
   expect_false(file.exists(file.path(home, ".Renviron")))
 })
 
+# Skips when this account can't make symbolic links (on Windows that needs
+# extra rights), except in CI, where the runners can and a skip would hide a
+# test that never ran.
+skip_if_cant_link <- function(linked) {
+  if (!linked && nzchar(Sys.getenv("CI"))) {
+    fail("Couldn't make a symbolic link in CI.")
+  }
+  skip_if_not(linked, "This account can't make symbolic links.")
+}
+
+test_that("install = TRUE refuses a .Renviron that is a symbolic link", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  target <- file.path(home, "dotfiles.Renviron")
+  writeLines("OTHER_KEY=keep-me", target)
+  path <- file.path(home, ".Renviron")
+  # Making links on Windows needs extra rights, which a machine may not give.
+  linked <- suppressWarnings(file.symlink(target, path))
+  skip_if_cant_link(linked)
+  seen <- local_confirm(TRUE)
+
+  expect_snapshot(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    error = TRUE,
+    transform = \(x) gsub(home, "<home>", x, fixed = TRUE)
+  )
+  expect_null(seen$question)
+  expect_true(.is_link(path))
+  expect_equal(readLines(target), "OTHER_KEY=keep-me")
+  expect_equal(Sys.getenv("CDC_LOCATOR_CLIENT_ID"), "")
+})
+
+test_that("install = TRUE saves nothing if it can't tell whether the file is a link", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  seen <- local_confirm(TRUE)
+  local_mocked_bindings(.is_link = function(path) NA)
+
+  expect_snapshot(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    error = TRUE,
+    transform = \(x) gsub(home, "<home>", x, fixed = TRUE)
+  )
+  expect_null(seen$question)
+  expect_false(file.exists(file.path(home, ".Renviron")))
+  expect_equal(Sys.getenv("CDC_LOCATOR_CLIENT_ID"), "")
+})
+
+test_that(".is_link() tells links from files and missing paths", {
+  # The folder name has both kinds of apostrophe, which must not reach the
+  # PowerShell command on Windows. (Without UTF-8, only the straight one.)
+  name <- "O'Brien's files"
+  if (l10n_info()[["UTF-8"]]) {
+    name <- "O\u2019Brien's files"
+  }
+  home <- file.path(withr::local_tempdir(), name)
+  dir.create(home)
+  target <- file.path(home, "target")
+  writeLines("x", target)
+  expect_false(.is_link(target))
+  expect_false(.is_link(file.path(home, "missing")))
+  link <- file.path(home, "link")
+  skip_if_cant_link(suppressWarnings(file.symlink(target, link)))
+  expect_true(.is_link(link))
+  # A broken link is still a link.
+  unlink(target)
+  expect_true(.is_link(link))
+})
+
+test_that(".is_windows_link() passes the path as data and reads the answer", {
+  scripts <- character()
+  answer <- list(status = 0L, output = "link")
+  local_mocked_bindings(.run_powershell = function(script, path) {
+    scripts <<- c(scripts, script)
+    answer
+  })
+
+  expect_true(.is_windows_link("C:/Users/O\u2019Brien/.Renviron"))
+  answer$output <- "file"
+  expect_false(.is_windows_link("C:/x"))
+  answer$output <- "missing"
+  expect_false(.is_windows_link("C:/x"))
+  # Access denied, or any other failure, is neither.
+  answer <- list(status = 1L, output = character())
+  expect_equal(.is_windows_link("C:/x"), NA)
+  answer <- list(status = 0L, output = c("link", "file"))
+  expect_equal(.is_windows_link("C:/x"), NA)
+
+  expect_no_match(scripts, "Brien", fixed = TRUE)
+  expect_match(scripts[1], "$env:CDCLOCATOR_FILE", fixed = TRUE)
+  expect_match(scripts[1], "FileNotFoundException", fixed = TRUE)
+})
+
 test_that("install = TRUE warns when the current folder has its own .Renviron", {
   home <- local_temp_home()
   # With R_ENVIRON_USER unset, R reads a .Renviron in the starting folder

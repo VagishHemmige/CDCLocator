@@ -68,6 +68,10 @@
 #' file instead of the one in your home folder, so credentials saved there
 #' don't apply in that project. The function warns you when this is the case.
 #'
+#' With `install = TRUE`, if the `.Renviron` file is a symbolic link, nothing is
+#' set or saved, because replacing the file would replace the link. Add the
+#' lines to the file it points to yourself.
+#'
 #' Avoid typing the token into a script you might share. Calling this function
 #' with values read from a password manager, or with
 #' `rstudioapi::askForPassword()`, keeps them out of your code.
@@ -128,6 +132,7 @@ cdc_locator_set_credentials <- function(
         call = call
       )
     }
+    .check_renviron_target(.renviron_path(), call)
   }
 
   Sys.setenv(
@@ -200,6 +205,75 @@ cdc_locator_set_credentials <- function(
     )
   }
   invisible(x)
+}
+
+# Saving replaces the file by renaming a new one over it, which would turn a
+# symbolic link (say, to a dotfiles repository) into a regular file and leave
+# the file it pointed to unchanged. So a link is refused, without asking.
+.check_renviron_target <- function(path, call) {
+  is_link <- .is_link(path)
+  if (is.na(is_link)) {
+    cli::cli_abort(
+      c(
+        "Couldn't check whether {.file {path}} is a link, so it wasn't updated.",
+        "i" = "Use {.code install = FALSE}, or add the credentials to it yourself.",
+        "i" = "Nothing was set or saved."
+      ),
+      call = call
+    )
+  }
+  if (is_link) {
+    cli::cli_abort(
+      c(
+        "{.file {path}} is a symbolic link, so it can't be updated safely.",
+        "i" = "Use {.code install = FALSE}, or add the credentials to the file it points to yourself.",
+        "i" = "Nothing was set or saved."
+      ),
+      call = call
+    )
+  }
+  invisible(path)
+}
+
+# TRUE if `path` is a link (including a broken one), FALSE if it is a regular
+# file or missing, NA if that can't be told.
+.is_link <- function(path) {
+  if (.Platform$OS.type == "windows") {
+    return(.is_windows_link(path))
+  }
+  # Sys.readlink() gives "" for a regular file and NA for a missing one.
+  link <- Sys.readlink(path)
+  !is.na(link) && nzchar(link)
+}
+
+# Sys.readlink() always gives "" on Windows, so ask Windows for the path's own
+# attributes (not those of anything it points to): a reparse point is a
+# symbolic link or junction. Only "not found" counts as missing; any other
+# failure, such as access denied, gives NA.
+.is_windows_link <- function(path) {
+  script <- paste(
+    "$ErrorActionPreference = 'Stop'",
+    paste0(
+      "try { $attributes = [IO.File]::GetAttributes($env:CDCLOCATOR_FILE) } ",
+      "catch [IO.FileNotFoundException], [IO.DirectoryNotFoundException] ",
+      "{ 'missing'; exit 0 }"
+    ),
+    paste0(
+      "if ($attributes -band [IO.FileAttributes]::ReparsePoint) ",
+      "{ 'link' } else { 'file' }"
+    ),
+    sep = "; "
+  )
+  .link_answer(.run_powershell(script, path))
+}
+
+# Turns the PowerShell answer into TRUE (a link), FALSE (a file or nothing),
+# or NA (anything else, including a failed run).
+.link_answer <- function(result) {
+  if (result$status != 0 || length(result$output) != 1) {
+    return(NA)
+  }
+  switch(result$output, link = TRUE, file = FALSE, missing = FALSE, NA)
 }
 
 # The user .Renviron R reads at startup when no project file is present:
