@@ -181,6 +181,7 @@ test_that("install = TRUE writes both lines after a yes, without showing them", 
   )
   expect_no_match(messages, "fake-client")
   expect_match(messages, "Saved", all = FALSE)
+  # Windows is checked by its own test, through the access control list.
   skip_on_os("windows")
   expect_equal(format(file.mode(path)), "600")
 })
@@ -406,6 +407,127 @@ test_that("install = TRUE keeps the old file if closing the new one warns", {
   expect_equal(list.files(home, all.files = TRUE, no.. = TRUE), ".Renviron")
 })
 
+test_that("install = TRUE never removes a file that already had the temporary name", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  taken <- file.path(home, "someone-elses-file")
+  writeLines("keep me", taken)
+  local_confirm(TRUE)
+  local_mocked_bindings(.new_temp_path = function(folder) taken)
+
+  expect_snapshot(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    error = TRUE,
+    transform = \(x) gsub(home, "<home>", x, fixed = TRUE)
+  )
+  expect_equal(readLines(taken), "keep me")
+  expect_false(file.exists(file.path(home, ".Renviron")))
+})
+
+test_that("install = TRUE never touches a folder that already had the staging name", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  taken <- file.path(home, "someone-elses-folder")
+  dir.create(taken)
+  writeLines("keep me", file.path(taken, ".Renviron"))
+  local_confirm(TRUE)
+  local_mocked_bindings(.new_temp_path = function(folder) taken)
+
+  expect_error(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    "readable only by you"
+  )
+  expect_equal(readLines(file.path(taken, ".Renviron")), "keep me")
+  expect_false(file.exists(file.path(home, ".Renviron")))
+})
+
+test_that("install = TRUE writes inside an owner-only staging folder, then removes it", {
+  skip_on_os("windows")
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  local_confirm(TRUE)
+  seen <- new.env()
+  real_protect <- .protect_file
+  local_mocked_bindings(.protect_file = function(path) {
+    seen$folder <- dirname(path)
+    seen$mode <- format(file.mode(dirname(path)))
+    real_protect(path)
+  })
+
+  suppressMessages(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    )
+  )
+
+  expect_equal(seen$mode, "700")
+  expect_equal(dirname(seen$folder), home)
+  expect_false(dir.exists(seen$folder))
+  expect_equal(list.files(home, all.files = TRUE, no.. = TRUE), ".Renviron")
+})
+
+test_that("install = TRUE removes only its own file from the staging folder", {
+  # Whatever else turns up in the staging folder is left alone, and so is the
+  # folder, rather than deleted with it.
+  skip_on_os("windows")
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  local_confirm(TRUE)
+  seen <- new.env()
+  local_mocked_bindings(.write_lines = function(lines, path) {
+    seen$folder <- dirname(path)
+    writeLines("not mine", file.path(dirname(path), "other"))
+    stop("disk full")
+  })
+
+  expect_error(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    "Couldn't write"
+  )
+  expect_equal(
+    list.files(seen$folder, all.files = TRUE, no.. = TRUE),
+    "other"
+  )
+})
+
+test_that(".remove_empty_folder() removes only an empty folder", {
+  # Unix only, as its one caller is: on Windows file.remove() can't remove a
+  # folder.
+  skip_on_os("windows")
+  empty <- withr::local_tempdir()
+  .remove_empty_folder(empty)
+  expect_false(dir.exists(empty))
+
+  full <- withr::local_tempdir()
+  writeLines("x", file.path(full, "keep"))
+  .remove_empty_folder(full)
+  expect_true(file.exists(file.path(full, "keep")))
+})
+
+test_that(".native_path() keeps a link's own name instead of its target", {
+  folder <- withr::local_tempdir()
+  target <- file.path(folder, "target")
+  writeLines("x", target)
+  link <- file.path(folder, "link")
+  skip_if_not(suppressWarnings(file.symlink(target, link)))
+
+  expect_match(.native_path(link), "link$")
+})
+
 test_that("install = TRUE keeps the old file if replacing it fails", {
   home <- local_temp_home()
   withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
@@ -446,6 +568,176 @@ test_that("install = TRUE makes an existing readable .Renviron owner-only", {
 
   expect_equal(format(file.mode(path)), "600")
   expect_equal(readLines(path)[1], "OTHER_KEY=keep-me")
+})
+
+# On Windows: a temporary folder everyone can read, as a shared folder named by
+# R_ENVIRON_USER might be. `name` is the folder's name inside the temporary
+# folder.
+local_everyone_reads_folder <- function(name = "shared", env = parent.frame()) {
+  folder <- file.path(withr::local_tempdir(.local_envir = env), name)
+  dir.create(folder)
+  icacls <- file.path(Sys.getenv("SystemRoot"), "System32", "icacls.exe")
+  status <- system2(
+    icacls,
+    c(shQuote(folder, type = "cmd"), "/grant", "*S-1-1-0:(OI)(CI)R"),
+    stdout = FALSE
+  )
+  if (!identical(as.integer(status), 0L)) {
+    skip("Couldn't let everyone read the test folder.")
+  }
+  normalizePath(folder, winslash = "/")
+}
+
+# On Windows: the current user's SID, whether a file's list is protected, and
+# its rules as "SID;type;rights;inherited", read with PowerShell independently
+# of the package's helpers.
+read_acl <- function(path) {
+  withr::local_envvar(CHECK_FILE = normalizePath(path, winslash = "\\"))
+  script <- paste(
+    "$acl = Get-Acl -LiteralPath $env:CHECK_FILE",
+    "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value",
+    "$acl.AreAccessRulesProtected",
+    paste0(
+      "$acl.GetAccessRules($true, $true, ",
+      "[Security.Principal.SecurityIdentifier]) | ForEach-Object { ",
+      "$_.IdentityReference.Value + ';' + $_.AccessControlType + ';' + ",
+      "$_.FileSystemRights + ';' + $_.IsInherited }"
+    ),
+    sep = "; "
+  )
+  out <- system2(
+    "powershell",
+    c("-NoProfile", "-Command", shQuote(script, type = "cmd")),
+    stdout = TRUE
+  )
+  out <- trimws(out[nzchar(trimws(out))])
+  list(sid = out[1], protected = out[2], rules = out[-(1:2)])
+}
+
+# Checks that read_acl() found one rule: full control for the current user.
+expect_owner_only <- function(acl) {
+  expect_match(acl$sid, "^S-1-[0-9]+(-[0-9]+)+$")
+  expect_equal(acl$protected, "True")
+  expect_equal(acl$rules, paste0(acl$sid, ";Allow;FullControl;False"))
+}
+
+test_that(".create_private_file() on Windows makes a file only its owner can open", {
+  skip_on_os(c("mac", "linux", "solaris"))
+  skip_on_cran()
+  folder <- local_everyone_reads_folder()
+  path <- file.path(folder, ".Renviron-test")
+
+  expect_true(.create_private_file(path))
+  expect_true(file.exists(path))
+  expect_owner_only(read_acl(path))
+  expect_true(.protect_file(path))
+  # It never reuses a file that already exists.
+  expect_false(.create_private_file(path))
+})
+
+test_that(".create_private_file() on Windows copes with quotes in the path", {
+  skip_on_os(c("mac", "linux", "solaris"))
+  skip_on_cran()
+  folder <- local_everyone_reads_folder("O\u2019Brien's files")
+  path <- file.path(folder, ".Renviron-test")
+
+  expect_true(.create_private_file(path))
+  expect_true(.protect_file(path))
+})
+
+test_that("install = TRUE on Windows gives only the current user access", {
+  skip_on_os(c("mac", "linux", "solaris"))
+  skip_on_cran()
+  folder <- local_everyone_reads_folder()
+  path <- file.path(folder, ".Renviron")
+  withr::local_envvar(
+    R_ENVIRON_USER = path,
+    CDC_LOCATOR_CLIENT_ID = NA,
+    CDC_LOCATOR_CLIENT_TOKEN = NA
+  )
+  writeLines("OTHER_KEY=keep-me", path)
+  local_confirm(TRUE)
+
+  suppressMessages(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    )
+  )
+
+  expect_owner_only(read_acl(path))
+  expect_equal(readLines(path)[1], "OTHER_KEY=keep-me")
+  expect_equal(list.files(folder, all.files = TRUE, no.. = TRUE), ".Renviron")
+})
+
+test_that("the Windows helpers pass the path to PowerShell only as data", {
+  scripts <- character()
+  local_mocked_bindings(.run_powershell = function(script, path) {
+    scripts <<- c(scripts, script)
+    list(status = 0L, output = "created")
+  })
+
+  .create_private_file_windows("C:/Users/O\u2019Brien/.Renviron-1")
+  .protect_file_windows("C:/Users/O\u2019Brien/.Renviron-1")
+
+  expect_length(scripts, 2)
+  expect_no_match(scripts, "Brien", fixed = TRUE)
+  expect_match(scripts, "$env:CDCLOCATOR_FILE", fixed = TRUE)
+  expect_match(scripts[1], "CreateNew", fixed = TRUE)
+})
+
+test_that(".protect_file_windows() needs the one owner-only rule", {
+  sid <- "S-1-5-21-1-2-3-500"
+  owner_only <- c(
+    sid,
+    "protected=True",
+    paste0("rule=", sid, ";Allow;FullControl;False")
+  )
+  answer <- list(status = 0L, output = owner_only)
+  local_mocked_bindings(.run_powershell = function(script, path) answer)
+  expect_true(.protect_file_windows("C:/x"))
+
+  answer <- list(status = 1L, output = owner_only)
+  expect_false(.protect_file_windows("C:/x"))
+})
+
+test_that(".create_private_file_windows() fails when PowerShell does", {
+  answer <- list(status = 1L, output = character())
+  local_mocked_bindings(.run_powershell = function(script, path) answer)
+  expect_false(.create_private_file_windows("C:/x"))
+
+  answer <- list(status = 0L, output = "something else")
+  expect_false(.create_private_file_windows("C:/x"))
+})
+
+test_that(".acl_is_owner_only() accepts only one protected owner rule", {
+  sid <- "S-1-5-21-1-2-3-500"
+  rule <- paste0("rule=", sid, ";Allow;FullControl;False")
+
+  expect_true(.acl_is_owner_only(c(sid, "protected=True", rule)))
+  # Not protected, so rules can still be inherited.
+  expect_false(.acl_is_owner_only(c(sid, "protected=False", rule)))
+  # Everyone can also read.
+  everyone <- "rule=S-1-1-0;Allow;ReadAndExecute, Synchronize;False"
+  expect_false(.acl_is_owner_only(c(sid, "protected=True", rule, everyone)))
+  # Inherited, read-only, denied, another account, no rule, no SID.
+  expect_false(.acl_is_owner_only(
+    c(sid, "protected=True", paste0("rule=", sid, ";Allow;FullControl;True"))
+  ))
+  expect_false(.acl_is_owner_only(
+    c(sid, "protected=True", paste0("rule=", sid, ";Allow;Read;False"))
+  ))
+  expect_false(.acl_is_owner_only(
+    c(sid, "protected=True", paste0("rule=", sid, ";Deny;FullControl;False"))
+  ))
+  expect_false(.acl_is_owner_only(
+    c(sid, "protected=True", "rule=S-1-5-21-9-9-9-1001;Allow;FullControl;False")
+  ))
+  expect_false(.acl_is_owner_only(c(sid, "protected=True")))
+  expect_false(.acl_is_owner_only(
+    c("LA", "protected=True", "rule=LA;Allow;FullControl;False")
+  ))
 })
 
 test_that("install = TRUE saves nothing if the file can't be protected", {
