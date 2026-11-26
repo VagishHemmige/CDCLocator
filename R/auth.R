@@ -59,7 +59,8 @@
 #' `CDC_LOCATOR_CLIENT_ID` and `CDC_LOCATOR_CLIENT_TOKEN` lines are replaced,
 #' and every other line is kept. The file is made readable only by you before
 #' the credentials are written to it; if that isn't possible, nothing is saved.
-#' (On Windows, files are protected by the permissions of your home folder.)
+#' (On Windows, this means an access control list that gives only your account
+#' access, set with the system's `icacls` tool and checked afterwards.)
 #' Because it must ask, `install = TRUE` only works in an interactive session.
 #'
 #' R reads only one user `.Renviron` when it starts. If the folder you start R
@@ -265,14 +266,101 @@ cdc_locator_set_credentials <- function(
 }
 
 # Makes a file readable and writable by its owner only, and checks that it
-# worked. Windows protects files through folder permissions instead, and a
-# user's home folder is private by default, so there's nothing to check.
+# worked.
 .protect_file <- function(path) {
   if (.Platform$OS.type == "windows") {
-    return(TRUE)
+    return(.protect_file_windows(path))
   }
   Sys.chmod(path, mode = "0600", use_umask = FALSE)
   identical(format(file.mode(path)), "600")
+}
+
+# On Windows, file modes don't decide who can read a file; its access control
+# list does, and a new file inherits its folder's list, which may let others
+# read it (for example when R_ENVIRON_USER names a shared folder). So the
+# inherited entries are removed and only the current user, named by security
+# identifier (SID), is given access. The list is then read back and checked.
+# Any failure returns FALSE, so nothing is saved.
+.protect_file_windows <- function(path) {
+  system32 <- file.path(Sys.getenv("SystemRoot", "C:/Windows"), "System32")
+
+  whoami <- .run_command(
+    file.path(system32, "whoami.exe"),
+    c("/user", "/fo", "csv", "/nh")
+  )
+  sid <- if (whoami$status == 0) .parse_whoami_sid(whoami$output) else NA
+  if (is.na(sid)) {
+    return(FALSE)
+  }
+
+  restrict <- .run_command(
+    file.path(system32, "icacls.exe"),
+    c(
+      shQuote(path, type = "cmd"),
+      "/inheritance:r",
+      "/grant:r",
+      paste0("*", sid, ":F")
+    )
+  )
+  if (restrict$status != 0) {
+    return(FALSE)
+  }
+
+  read_back <- .run_command(
+    file.path(system32, "WindowsPowerShell", "v1.0", "powershell.exe"),
+    c(
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      shQuote(
+        paste0(
+          "(Get-Acl -LiteralPath '",
+          gsub("'", "''", path, fixed = TRUE),
+          "').Sddl"
+        ),
+        type = "cmd"
+      )
+    )
+  )
+  read_back$status == 0 && .dacl_is_owner_only(read_back$output, sid)
+}
+
+# The SID in `whoami /user /fo csv /nh` output, a line like
+# "machine\\name","S-1-5-21-...", or NA if there isn't exactly one.
+.parse_whoami_sid <- function(output) {
+  output <- output[nzchar(trimws(output))]
+  if (length(output) != 1) {
+    return(NA_character_)
+  }
+  fields <- scan(text = output, what = "", sep = ",", quiet = TRUE)
+  sid <- fields[length(fields)]
+  if (length(sid) == 1 && grepl("^S-1-[0-9]+(-[0-9]+)+$", sid)) {
+    sid
+  } else {
+    NA_character_
+  }
+}
+
+# Whether a security descriptor, in Security Descriptor Definition Language,
+# has a protected list (no inherited entries) whose only entry gives `sid`
+# full control: "D:P(A;;FA;;;<sid>)", possibly with other list flags. Anything
+# else, including a well-known short name in place of the SID, is FALSE.
+.dacl_is_owner_only <- function(sddl, sid) {
+  sddl <- paste(trimws(sddl), collapse = "")
+  dacl <- regmatches(sddl, regexec("D:([A-Z]*)((\\([^)]*\\))*)", sddl))[[1]]
+  length(dacl) >= 3 &&
+    grepl("P", dacl[2], fixed = TRUE) &&
+    identical(dacl[3], paste0("(A;;FA;;;", sid, ")"))
+}
+
+# Runs a program and returns its exit status and standard output. A program
+# that can't be started counts as a failure.
+.run_command <- function(command, args) {
+  output <- tryCatch(
+    suppressWarnings(system2(command, args, stdout = TRUE, stderr = FALSE)),
+    error = function(e) structure(character(), status = 127L)
+  )
+  list(status = attr(output, "status") %||% 0L, output = output)
 }
 
 # R reads a .Renviron in the starting folder instead of the user file. Warn

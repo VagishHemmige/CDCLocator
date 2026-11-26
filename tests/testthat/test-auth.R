@@ -181,6 +181,7 @@ test_that("install = TRUE writes both lines after a yes, without showing them", 
   )
   expect_no_match(messages, "fake-client")
   expect_match(messages, "Saved", all = FALSE)
+  # Windows is checked by its own test, through the access control list.
   skip_on_os("windows")
   expect_equal(format(file.mode(path)), "600")
 })
@@ -348,6 +349,119 @@ test_that("install = TRUE makes an existing readable .Renviron owner-only", {
 
   expect_equal(format(file.mode(path)), "600")
   expect_equal(readLines(path)[1], "OTHER_KEY=keep-me")
+})
+
+test_that("install = TRUE on Windows gives only the current user access", {
+  # The folder lets everyone read, as a shared folder named by R_ENVIRON_USER
+  # might, and so does the existing file.
+  skip_on_os(c("mac", "linux", "solaris"))
+  skip_on_cran()
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  icacls <- file.path(Sys.getenv("SystemRoot"), "System32", "icacls.exe")
+  everyone_reads <- "*S-1-1-0:(OI)(CI)R"
+  system2(icacls, c(shQuote(home, type = "cmd"), "/grant", everyone_reads))
+  path <- file.path(home, ".Renviron")
+  writeLines("OTHER_KEY=keep-me", path)
+  local_confirm(TRUE)
+
+  suppressMessages(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    )
+  )
+
+  sid <- .parse_whoami_sid(
+    system2("whoami", c("/user", "/fo", "csv", "/nh"), stdout = TRUE)
+  )
+  sddl <- system2(
+    "powershell",
+    c(
+      "-NoProfile",
+      "-Command",
+      shQuote(paste0("(Get-Acl -LiteralPath '", path, "').Sddl"), type = "cmd")
+    ),
+    stdout = TRUE
+  )
+  expect_match(sddl, paste0("D:P[A-Z]*\\(A;;FA;;;", sid, "\\)($|S:)"))
+  expect_equal(readLines(path)[1], "OTHER_KEY=keep-me")
+  expect_equal(list.files(home, all.files = TRUE, no.. = TRUE), ".Renviron")
+})
+
+test_that(".protect_file_windows() restricts by SID and checks the result", {
+  sid <- "S-1-5-21-1-2-3-1001"
+  calls <- list()
+  answers <- list(
+    whoami = list(status = 0L, output = paste0('"pc\\fake","', sid, '"')),
+    icacls = list(status = 0L, output = "processed"),
+    powershell = list(
+      status = 0L,
+      output = paste0("O:", sid, "G:", sid, "D:P(A;;FA;;;", sid, ")")
+    )
+  )
+  local_mocked_bindings(.run_command = function(command, args) {
+    program <- sub("\\.exe$", "", basename(command))
+    calls[[program]] <<- args
+    answers[[program]]
+  })
+
+  expect_true(.protect_file_windows("C:/Users/fake/.Renviron-1"))
+  expect_contains(
+    calls$icacls,
+    c("/inheritance:r", "/grant:r", paste0("*", sid, ":F"))
+  )
+
+  answers$powershell$output <- paste0(
+    "D:P(A;;FA;;;", sid, ")(A;;FR;;;WD)"
+  )
+  expect_false(.protect_file_windows("C:/Users/fake/.Renviron-1"))
+
+  answers$icacls$status <- 5L
+  expect_false(.protect_file_windows("C:/Users/fake/.Renviron-1"))
+
+  calls <- list()
+  answers$whoami$status <- 1L
+  expect_false(.protect_file_windows("C:/Users/fake/.Renviron-1"))
+  expect_null(calls$icacls)
+})
+
+test_that(".parse_whoami_sid() reads one SID or gives NA", {
+  expect_equal(
+    .parse_whoami_sid(c('"pc\\fake user","S-1-5-21-11-22-33-1001"', "")),
+    "S-1-5-21-11-22-33-1001"
+  )
+  expect_equal(.parse_whoami_sid(character()), NA_character_)
+  expect_equal(.parse_whoami_sid('"pc\\fake","not a sid"'), NA_character_)
+  expect_equal(
+    .parse_whoami_sid(c('"a","S-1-5-21-1-2-3-4"', '"b","S-1-5-21-1-2-3-5"')),
+    NA_character_
+  )
+})
+
+test_that(".dacl_is_owner_only() accepts only a protected, single-entry list", {
+  sid <- "S-1-5-21-1-2-3-1001"
+  owner <- paste0("O:", sid, "G:", sid)
+  ace <- paste0("(A;;FA;;;", sid, ")")
+
+  expect_true(.dacl_is_owner_only(paste0(owner, "D:P", ace), sid))
+  expect_true(.dacl_is_owner_only(paste0(owner, "D:PAI", ace, "S:AI"), sid))
+  # Not protected, so entries can still be inherited.
+  expect_false(.dacl_is_owner_only(paste0(owner, "D:", ace), sid))
+  # Everyone can also read.
+  expect_false(
+    .dacl_is_owner_only(paste0(owner, "D:P", ace, "(A;;FR;;;WD)"), sid)
+  )
+  # An inherited entry, read-only access, another account, no list at all.
+  expect_false(
+    .dacl_is_owner_only(paste0(owner, "D:P(A;ID;FA;;;", sid, ")"), sid)
+  )
+  expect_false(
+    .dacl_is_owner_only(paste0(owner, "D:P(A;;FR;;;", sid, ")"), sid)
+  )
+  expect_false(.dacl_is_owner_only(paste0(owner, "D:P(A;;FA;;;LA)"), sid))
+  expect_false(.dacl_is_owner_only(owner, sid))
 })
 
 test_that("install = TRUE saves nothing if the file can't be protected", {

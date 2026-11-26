@@ -33,7 +33,8 @@ startup (on Windows, \code{R_USER} if set, then \code{HOME}). Any existing
 \code{CDC_LOCATOR_CLIENT_ID} and \code{CDC_LOCATOR_CLIENT_TOKEN} lines are replaced,
 and every other line is kept. The file is made readable only by you before
 the credentials are written to it; if that isn't possible, nothing is saved.
-(On Windows, files are protected by the permissions of your home folder.)
+(On Windows, this means an access control list that gives only your account
+access, set with the system's \code{icacls} tool and checked afterwards.)
 Because it must ask, \code{install = TRUE} only works in an interactive session.
 
 R reads only one user \code{.Renviron} when it starts. If the folder you start R
