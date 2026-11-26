@@ -381,6 +381,31 @@ test_that("install = TRUE keeps the old file if writing the new one fails", {
   expect_equal(list.files(home, all.files = TRUE, no.. = TRUE), ".Renviron")
 })
 
+test_that("install = TRUE keeps the old file if closing the new one warns", {
+  # A full disk can surface only when the file is closed, as a warning.
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  path <- file.path(home, ".Renviron")
+  writeLines(c("OTHER_KEY=keep-me", "LAST=also-kept"), path)
+  local_confirm(TRUE)
+  local_mocked_bindings(.write_lines = function(lines, path) {
+    writeLines(lines[1], path)
+    warning("problem closing connection")
+  })
+
+  expect_snapshot(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    error = TRUE,
+    transform = \(x) gsub(home, "<home>", x, fixed = TRUE)
+  )
+  expect_equal(readLines(path), c("OTHER_KEY=keep-me", "LAST=also-kept"))
+  expect_equal(list.files(home, all.files = TRUE, no.. = TRUE), ".Renviron")
+})
+
 test_that("install = TRUE keeps the old file if replacing it fails", {
   home <- local_temp_home()
   withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)

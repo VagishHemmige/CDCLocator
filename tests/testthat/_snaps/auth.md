@@ -118,6 +118,16 @@
       i The credentials are set for this session, but nothing was saved.
       i Add them to '<home>/.Renviron' yourself, and make it readable only by you.
 
+# install = TRUE keeps the old file if closing the new one warns
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake-client-token", install = TRUE)
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! Couldn't write a new copy of '<home>/.Renviron'.
+      i The credentials are set for this session, but nothing was saved.
+      i Add them to '<home>/.Renviron' yourself, and make it readable only by you.
+
 # install = TRUE keeps the old file if replacing it fails
 
     Code

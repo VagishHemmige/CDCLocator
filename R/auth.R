@@ -250,11 +250,14 @@ cdc_locator_set_credentials <- function(
     )
   }
 
+  # A warning counts as a failure too: a full disk can show up only as a
+  # warning when the file is closed, leaving it incomplete.
   written <- tryCatch(
     {
       .write_lines(lines, temp)
       TRUE
     },
+    warning = function(w) FALSE,
     error = function(e) FALSE
   )
   if (!written) {
