@@ -247,14 +247,14 @@ test_that("install = TRUE uses R_ENVIRON_USER when it names a file", {
 })
 
 test_that("install = TRUE refuses a .Renviron that is a symbolic link", {
-  # Making links on Windows needs extra rights.
-  skip_on_os("windows")
   home <- local_temp_home()
   withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
   target <- file.path(home, "dotfiles.Renviron")
   writeLines("OTHER_KEY=keep-me", target)
   path <- file.path(home, ".Renviron")
-  file.symlink(target, path)
+  # Making links on Windows needs extra rights, which a machine may not give.
+  linked <- suppressWarnings(file.symlink(target, path))
+  skip_if_not(linked, "This account can't make symbolic links.")
   seen <- local_confirm(TRUE)
 
   expect_snapshot(
@@ -267,9 +267,43 @@ test_that("install = TRUE refuses a .Renviron that is a symbolic link", {
     transform = \(x) gsub(home, "<home>", x, fixed = TRUE)
   )
   expect_null(seen$question)
-  expect_equal(Sys.readlink(path), target)
+  expect_true(.is_link(path))
   expect_equal(readLines(target), "OTHER_KEY=keep-me")
   expect_equal(Sys.getenv("CDC_LOCATOR_CLIENT_ID"), "")
+})
+
+test_that("install = TRUE saves nothing if it can't tell whether the file is a link", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  seen <- local_confirm(TRUE)
+  local_mocked_bindings(.is_link = function(path) NA)
+
+  expect_snapshot(
+    cdc_locator_set_credentials(
+      "fake-client-id",
+      "fake-client-token",
+      install = TRUE
+    ),
+    error = TRUE,
+    transform = \(x) gsub(home, "<home>", x, fixed = TRUE)
+  )
+  expect_null(seen$question)
+  expect_false(file.exists(file.path(home, ".Renviron")))
+  expect_equal(Sys.getenv("CDC_LOCATOR_CLIENT_ID"), "")
+})
+
+test_that(".is_link() tells links from files and missing paths", {
+  home <- withr::local_tempdir()
+  target <- file.path(home, "target")
+  writeLines("x", target)
+  expect_false(.is_link(target))
+  expect_false(.is_link(file.path(home, "missing")))
+  link <- file.path(home, "link")
+  skip_if_not(suppressWarnings(file.symlink(target, link)))
+  expect_true(.is_link(link))
+  # A broken link is still a link.
+  unlink(target)
+  expect_true(.is_link(link))
 })
 
 test_that("install = TRUE warns when the current folder has its own .Renviron", {

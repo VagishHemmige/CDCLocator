@@ -77,6 +77,16 @@
       i Use `install = FALSE`, or add the credentials to the file it points to yourself.
       i Nothing was set or saved.
 
+# install = TRUE saves nothing if it can't tell whether the file is a link
+
+    Code
+      cdc_locator_set_credentials("fake-client-id", "fake-client-token", install = TRUE)
+    Condition
+      Error in `cdc_locator_set_credentials()`:
+      ! Couldn't check whether '<home>/.Renviron' is a link, so it wasn't updated.
+      i Use `install = FALSE`, or add the credentials to it yourself.
+      i Nothing was set or saved.
+
 # install = TRUE refuses values .Renviron can't hold, before writing
 
     Code
