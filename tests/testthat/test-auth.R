@@ -467,13 +467,21 @@ local_everyone_reads_folder <- function(name = "shared", env = parent.frame()) {
   normalizePath(folder, winslash = "/")
 }
 
-# On Windows: the current user's SID and a file's security descriptor, read
-# with PowerShell independently of the package's helpers.
+# On Windows: the current user's SID, whether a file's list is protected, and
+# its rules as "SID;type;rights;inherited", read with PowerShell independently
+# of the package's helpers.
 read_acl <- function(path) {
   withr::local_envvar(CHECK_FILE = normalizePath(path, winslash = "\\"))
   script <- paste(
+    "$acl = Get-Acl -LiteralPath $env:CHECK_FILE",
     "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value",
-    "(Get-Acl -LiteralPath $env:CHECK_FILE).Sddl",
+    "$acl.AreAccessRulesProtected",
+    paste0(
+      "$acl.GetAccessRules($true, $true, ",
+      "[Security.Principal.SecurityIdentifier]) | ForEach-Object { ",
+      "$_.IdentityReference.Value + ';' + $_.AccessControlType + ';' + ",
+      "$_.FileSystemRights + ';' + $_.IsInherited }"
+    ),
     sep = "; "
   )
   out <- system2(
@@ -482,7 +490,14 @@ read_acl <- function(path) {
     stdout = TRUE
   )
   out <- trimws(out[nzchar(trimws(out))])
-  list(sid = out[1], sddl = out[2])
+  list(sid = out[1], protected = out[2], rules = out[-(1:2)])
+}
+
+# Checks that read_acl() found one rule: full control for the current user.
+expect_owner_only <- function(acl) {
+  expect_match(acl$sid, "^S-1-[0-9]+(-[0-9]+)+$")
+  expect_equal(acl$protected, "True")
+  expect_equal(acl$rules, paste0(acl$sid, ";Allow;FullControl;False"))
 }
 
 test_that(".create_private_file() on Windows makes a file only its owner can open", {
@@ -493,9 +508,7 @@ test_that(".create_private_file() on Windows makes a file only its owner can ope
 
   expect_true(.create_private_file(path))
   expect_true(file.exists(path))
-  acl <- read_acl(path)
-  expect_match(acl$sid, "^S-1-[0-9]+(-[0-9]+)+$")
-  expect_match(acl$sddl, paste0("D:P[A-Z]*\\(A;;FA;;;", acl$sid, "\\)($|S:)"))
+  expect_owner_only(read_acl(path))
   expect_true(.protect_file(path))
   # It never reuses a file that already exists.
   expect_false(.create_private_file(path))
@@ -532,8 +545,7 @@ test_that("install = TRUE on Windows gives only the current user access", {
     )
   )
 
-  acl <- read_acl(path)
-  expect_match(acl$sddl, paste0("D:P[A-Z]*\\(A;;FA;;;", acl$sid, "\\)($|S:)"))
+  expect_owner_only(read_acl(path))
   expect_equal(readLines(path)[1], "OTHER_KEY=keep-me")
   expect_equal(list.files(folder, all.files = TRUE, no.. = TRUE), ".Renviron")
 })
@@ -554,22 +566,18 @@ test_that("the Windows helpers pass the path to PowerShell only as data", {
   expect_match(scripts[1], "CreateNew", fixed = TRUE)
 })
 
-test_that(".protect_file_windows() needs the one owner-only entry", {
-  sid <- "S-1-5-21-1-2-3-1001"
-  answer <- list(
-    status = 0L,
-    output = c(sid, paste0("O:", sid, "G:", sid, "D:P(A;;FA;;;", sid, ")"))
+test_that(".protect_file_windows() needs the one owner-only rule", {
+  sid <- "S-1-5-21-1-2-3-500"
+  owner_only <- c(
+    sid,
+    "protected=True",
+    paste0("rule=", sid, ";Allow;FullControl;False")
   )
+  answer <- list(status = 0L, output = owner_only)
   local_mocked_bindings(.run_powershell = function(script, path) answer)
   expect_true(.protect_file_windows("C:/x"))
 
-  answer$output[2] <- paste0("D:P(A;;FA;;;", sid, ")(A;;FR;;;WD)")
-  expect_false(.protect_file_windows("C:/x"))
-
-  answer$output[2] <- "D:P(A;;FA;;;S-1-5-21-9-9-9-500)"
-  expect_false(.protect_file_windows("C:/x"))
-
-  answer <- list(status = 1L, output = character())
+  answer <- list(status = 1L, output = owner_only)
   expect_false(.protect_file_windows("C:/x"))
 })
 
@@ -582,28 +590,33 @@ test_that(".create_private_file_windows() fails when PowerShell does", {
   expect_false(.create_private_file_windows("C:/x"))
 })
 
-test_that(".dacl_is_owner_only() accepts only a protected, single-entry list", {
-  sid <- "S-1-5-21-1-2-3-1001"
-  owner <- paste0("O:", sid, "G:", sid)
-  ace <- paste0("(A;;FA;;;", sid, ")")
+test_that(".acl_is_owner_only() accepts only one protected owner rule", {
+  sid <- "S-1-5-21-1-2-3-500"
+  rule <- paste0("rule=", sid, ";Allow;FullControl;False")
 
-  expect_true(.dacl_is_owner_only(paste0(owner, "D:P", ace), sid))
-  expect_true(.dacl_is_owner_only(paste0(owner, "D:PAI", ace, "S:AI"), sid))
-  # Not protected, so entries can still be inherited.
-  expect_false(.dacl_is_owner_only(paste0(owner, "D:", ace), sid))
+  expect_true(.acl_is_owner_only(c(sid, "protected=True", rule)))
+  # Not protected, so rules can still be inherited.
+  expect_false(.acl_is_owner_only(c(sid, "protected=False", rule)))
   # Everyone can also read.
-  expect_false(
-    .dacl_is_owner_only(paste0(owner, "D:P", ace, "(A;;FR;;;WD)"), sid)
-  )
-  # An inherited entry, read-only access, another account, no list at all.
-  expect_false(
-    .dacl_is_owner_only(paste0(owner, "D:P(A;ID;FA;;;", sid, ")"), sid)
-  )
-  expect_false(
-    .dacl_is_owner_only(paste0(owner, "D:P(A;;FR;;;", sid, ")"), sid)
-  )
-  expect_false(.dacl_is_owner_only(paste0(owner, "D:P(A;;FA;;;LA)"), sid))
-  expect_false(.dacl_is_owner_only(owner, sid))
+  everyone <- "rule=S-1-1-0;Allow;ReadAndExecute, Synchronize;False"
+  expect_false(.acl_is_owner_only(c(sid, "protected=True", rule, everyone)))
+  # Inherited, read-only, denied, another account, no rule, no SID.
+  expect_false(.acl_is_owner_only(
+    c(sid, "protected=True", paste0("rule=", sid, ";Allow;FullControl;True"))
+  ))
+  expect_false(.acl_is_owner_only(
+    c(sid, "protected=True", paste0("rule=", sid, ";Allow;Read;False"))
+  ))
+  expect_false(.acl_is_owner_only(
+    c(sid, "protected=True", paste0("rule=", sid, ";Deny;FullControl;False"))
+  ))
+  expect_false(.acl_is_owner_only(
+    c(sid, "protected=True", "rule=S-1-5-21-9-9-9-1001;Allow;FullControl;False")
+  ))
+  expect_false(.acl_is_owner_only(c(sid, "protected=True")))
+  expect_false(.acl_is_owner_only(
+    c("LA", "protected=True", "rule=LA;Allow;FullControl;False")
+  ))
 })
 
 test_that("install = TRUE saves nothing if the file can't be protected", {

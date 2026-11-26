@@ -346,31 +346,39 @@ cdc_locator_set_credentials <- function(
 }
 
 # Reads a file's access control list back and checks that it is protected (no
-# inherited entries) and gives full control to the current user only.
+# inherited entries) and gives full control to the current user only. The
+# rules are listed with their SIDs, because the text form of the list (SDDL)
+# names some accounts by short codes instead, such as LA for the built-in
+# Administrator.
 .protect_file_windows <- function(path) {
   script <- paste(
     "$ErrorActionPreference = 'Stop'",
+    "$acl = Get-Acl -LiteralPath $env:CDCLOCATOR_FILE",
     "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value",
-    "(Get-Acl -LiteralPath $env:CDCLOCATOR_FILE).Sddl",
+    "'protected=' + $acl.AreAccessRulesProtected",
+    paste0(
+      "foreach ($rule in $acl.GetAccessRules($true, $true, ",
+      "[Security.Principal.SecurityIdentifier])) { 'rule=' + ",
+      "$rule.IdentityReference.Value + ';' + $rule.AccessControlType + ';' + ",
+      "$rule.FileSystemRights + ';' + $rule.IsInherited }"
+    ),
     sep = "; "
   )
   result <- .run_powershell(script, path)
-  result$status == 0 &&
-    length(result$output) == 2 &&
-    grepl("^S-1-[0-9]+(-[0-9]+)+$", result$output[1]) &&
-    .dacl_is_owner_only(result$output[2], result$output[1])
+  result$status == 0 && .acl_is_owner_only(result$output)
 }
 
-# Whether a security descriptor, in Security Descriptor Definition Language,
-# has a protected list (no inherited entries) whose only entry gives `sid`
-# full control: "D:P(A;;FA;;;<sid>)", possibly with other list flags. Anything
-# else, including a well-known short name in place of the SID, is FALSE.
-.dacl_is_owner_only <- function(sddl, sid) {
-  sddl <- paste(trimws(sddl), collapse = "")
-  dacl <- regmatches(sddl, regexec("D:([A-Z]*)((\\([^)]*\\))*)", sddl))[[1]]
-  length(dacl) >= 3 &&
-    grepl("P", dacl[2], fixed = TRUE) &&
-    identical(dacl[3], paste0("(A;;FA;;;", sid, ")"))
+# Whether the lines .protect_file_windows() prints describe a protected list
+# with one rule: allow full control, not inherited, for the current user,
+# whose SID is the first line.
+.acl_is_owner_only <- function(lines) {
+  if (length(lines) != 3) {
+    return(FALSE)
+  }
+  sid <- lines[1]
+  grepl("^S-1-[0-9]+(-[0-9]+)+$", sid) &&
+    identical(lines[2], "protected=True") &&
+    identical(lines[3], paste0("rule=", sid, ";Allow;FullControl;False"))
 }
 
 # Runs a fixed PowerShell script with `path` in the CDCLOCATOR_FILE
