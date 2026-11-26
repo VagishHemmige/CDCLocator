@@ -403,7 +403,9 @@ startup_renviron <- function(dir) {
 }
 
 # Folders for a startup test: R_USER and HOME, each with its own sentinel
-# .Renviron, and an empty project folder to start R in.
+# .Renviron, and an empty project folder to start R in. The site environment
+# file is an empty one, so the machine's own (which could set R_ENVIRON_USER)
+# can't change which user file R reads.
 local_startup_folders <- function(env = parent.frame()) {
   folders <- list(
     r_user = withr::local_tempdir(.local_envir = env),
@@ -416,7 +418,10 @@ local_startup_folders <- function(env = parent.frame()) {
     file.path(folders$r_user, ".Renviron")
   )
   writeLines("CDCLOCATOR_SENTINEL=home", file.path(folders$home, ".Renviron"))
+  site <- withr::local_tempfile(.local_envir = env)
+  file.create(site)
   withr::local_envvar(
+    R_ENVIRON = site,
     R_USER = folders$r_user,
     HOME = folders$home,
     R_ENVIRON_USER = NA,
