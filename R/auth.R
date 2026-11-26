@@ -236,15 +236,11 @@ cdc_locator_set_credentials <- function(
   temp <- tempfile(".Renviron-", tmpdir = folder)
   on.exit(unlink(temp), add = TRUE)
 
-  old_mask <- Sys.umask("077")
-  created <- file.create(temp)
-  Sys.umask(old_mask)
-
   not_saved <- c(
     "i" = "The credentials are set for this session, but nothing was saved.",
     "i" = "Add them to {.file {path}} yourself, and make it readable only by you."
   )
-  if (!created || !.protect_file(temp)) {
+  if (!.create_private_file(temp) || !.protect_file(temp)) {
     cli::cli_abort(
       c(
         "Couldn't make a file in {.file {folder}} readable only by you.",
@@ -254,14 +250,51 @@ cdc_locator_set_credentials <- function(
     )
   }
 
-  writeLines(lines, temp)
-  if (!file.rename(temp, path)) {
+  # A warning counts as a failure too: a full disk can show up only as a
+  # warning when the file is closed, leaving it incomplete.
+  written <- tryCatch(
+    {
+      .write_lines(lines, temp)
+      TRUE
+    },
+    warning = function(w) FALSE,
+    error = function(e) FALSE
+  )
+  if (!written) {
+    cli::cli_abort(
+      c("Couldn't write a new copy of {.file {path}}.", not_saved),
+      call = call
+    )
+  }
+  replaced <- tryCatch(.replace_file(temp, path), error = function(e) FALSE)
+  if (!replaced) {
     cli::cli_abort(
       c("Couldn't replace {.file {path}}.", not_saved),
       call = call
     )
   }
   invisible(path)
+}
+
+# Creates an empty file that only its owner can read, under a umask of 077.
+# The umask is restored however the create call ends, even when a warning is
+# turned into an error. Returns FALSE instead of stopping when it fails.
+.create_private_file <- function(path) {
+  old_mask <- Sys.umask("077")
+  on.exit(Sys.umask(old_mask), add = TRUE)
+  tryCatch(
+    file.create(path, showWarnings = FALSE),
+    error = function(e) FALSE
+  )
+}
+
+# Wrappers so tests can make writing or replacing fail.
+.write_lines <- function(lines, path) {
+  writeLines(lines, path)
+}
+
+.replace_file <- function(from, to) {
+  file.rename(from, to)
 }
 
 # Makes a file readable and writable by its owner only, and checks that it
