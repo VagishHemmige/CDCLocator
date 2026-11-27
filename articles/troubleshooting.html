@@ -112,10 +112,11 @@ saved.</p>
 <h3 id="has-characters-that-cant-be-saved-safely-in--renviron">“has characters that can’t be saved safely in .Renviron”<a class="anchor" aria-label="anchor" href="#has-characters-that-cant-be-saved-safely-in--renviron"></a>
 </h3>
 <p><code>.Renviron</code> treats spaces, quotes, <code>#</code> and
-<code>$</code> specially, so <code>install = TRUE</code> only saves
-plain values. Use <code>install = FALSE</code> for this session, and add
-the line to <code>.Renviron</code> yourself with the value in quotes.
-Nothing was set or saved.</p>
+<code>$</code> specially, and a line break would split the line, so
+<code>install = TRUE</code> only saves plain values. Use
+<code>install = FALSE</code> to set the credentials for this session
+only, and run it again in each new session. Nothing was set or
+saved.</p>
 </div>
 <div class="section level3">
 <h3 id="a-warning-that-this-folder-has-its-own--renviron">A warning that “this folder has its own .Renviron”<a class="anchor" aria-label="anchor" href="#a-warning-that-this-folder-has-its-own--renviron"></a>

@@ -60,8 +60,8 @@ own `.Renviron`, it warns you, for the reason explained under “Which
 `.Renviron` R reads” below.
 
 `install = TRUE` only saves plain values: letters, digits and
-`. _ ~ + / = : -`. If your ID or token has other characters, add it
-yourself.
+`. _ ~ + / = : -`. If your ID or token has other characters, use
+`install = FALSE` in each session instead.
 
 To edit the file yourself instead, open it with:
 
@@ -70,7 +70,8 @@ To edit the file yourself instead, open it with:
 usethis::edit_r_environ()
 ```
 
-Add two lines, with your own values and no quotes:
+Add two lines, with your own values and no quotes. This works only for
+plain values, the same ones `install = TRUE` can save:
 
     CDC_LOCATOR_CLIENT_ID=your-client-id
     CDC_LOCATOR_CLIENT_TOKEN=your-client-token
