@@ -418,6 +418,49 @@ test_that("install = TRUE refuses values .Renviron can't hold, before writing", 
   expect_false(file.exists(file.path(home, ".Renviron")))
 })
 
+test_that("after a refusal, install = FALSE doesn't suggest saving again", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  local_confirm(TRUE)
+
+  expect_snapshot(
+    cdc_locator_set_credentials("fake-client-id", "fake#token", install = TRUE),
+    error = TRUE
+  )
+  expect_snapshot(
+    cdc_locator_set_credentials("fake-client-id", "fake#token")
+  )
+  expect_equal(Sys.getenv("CDC_LOCATOR_CLIENT_TOKEN"), "fake#token")
+  expect_false(file.exists(file.path(home, ".Renviron")))
+})
+
+test_that("install = TRUE refuses line breaks, quotes and #, and shows none of them", {
+  home <- local_temp_home()
+  withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
+  local_confirm(TRUE)
+  bad <- c(
+    "fake\ntoken",
+    "fake\rtoken",
+    "fake\r\ntoken",
+    "fake\"token",
+    "fake'token",
+    "fake#token"
+  )
+
+  for (value in bad) {
+    cnd <- expect_error(
+      cdc_locator_set_credentials("fake-client-id", value, install = TRUE)
+    )
+    shown <- cli::ansi_strip(conditionMessage(cnd))
+    expect_no_match(shown, "fake-client-id", fixed = TRUE)
+    expect_no_match(shown, value, fixed = TRUE)
+    expect_no_match(shown, "in quotes", fixed = TRUE)
+  }
+  expect_equal(Sys.getenv("CDC_LOCATOR_CLIENT_ID"), "")
+  expect_equal(Sys.getenv("CDC_LOCATOR_CLIENT_TOKEN"), "")
+  expect_false(file.exists(file.path(home, ".Renviron")))
+})
+
 test_that("install must be TRUE or FALSE", {
   local_temp_home()
   withr::local_envvar(CDC_LOCATOR_CLIENT_ID = NA, CDC_LOCATOR_CLIENT_TOKEN = NA)
